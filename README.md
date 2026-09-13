@@ -106,14 +106,14 @@ uvicorn app.fast_api_app:app --host 0.0.0.0 --port 8080
 ### 3. Deploy to GCP Cloud Run via `agents-cli`
 ```bash
 # Verify build and dry-run deployment
-agents-cli deploy --dry-run --project argolis-qinshu-onboarding --region us-central1
+agents-cli deploy --dry-run --project <YOUR_GCP_PROJECT_ID> --region us-central1
 
 # Deploy to Cloud Run (scales to zero when idle, min-instances configurable)
 agents-cli deploy \
-  --project argolis-qinshu-onboarding \
+  --project <YOUR_GCP_PROJECT_ID> \
   --region us-central1 \
   --service-name small-team-support-agent \
-  --update-env-vars "USE_FIRESTORE=true,GOOGLE_CLOUD_PROJECT=argolis-qinshu-onboarding" \
+  --update-env-vars "USE_FIRESTORE=true,GOOGLE_CLOUD_PROJECT=<YOUR_GCP_PROJECT_ID>" \
   --no-confirm-project
 ```
 

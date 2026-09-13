@@ -16,9 +16,9 @@ import sys
 # Ensure local package path is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app.agent import extract_persona, run_turn
+from app.agent import run_turn
 from app.engine import calendar_store
-from app.tools import get_daily_schedule, reset_store_state
+from app.tools import reset_store_state
 
 
 class Colors:
@@ -53,18 +53,24 @@ PERSONA_ICONS = {
 
 
 def print_banner():
-    print(f"{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.CYAN}🎾 SMALL TEAM SUPPORT AGENT: MULTI-PERSONA INTERACTIVE DEMO{Colors.RESET}")
-    print(f"{Colors.CYAN}Digital Chief-of-Staff for WTA Player Gina & Support Team (ADK 2.0){Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.CYAN}{'=' * 80}{Colors.RESET}")
+    print(
+        f"{Colors.BOLD}{Colors.CYAN}🎾 SMALL TEAM SUPPORT AGENT: MULTI-PERSONA INTERACTIVE DEMO{Colors.RESET}"
+    )
+    print(
+        f"{Colors.CYAN}Digital Chief-of-Staff for WTA Player Gina & Support Team (ADK 2.0){Colors.RESET}"
+    )
+    print(f"{Colors.BOLD}{Colors.CYAN}{'=' * 80}{Colors.RESET}")
     print("Available Commands:")
     print("  /persona <gina|gor|sai|ma|beita|coordinator> - Switch active persona")
     print("  /schedule [YYYY-MM-DD]                        - View team agenda & active alerts")
     print("  /reset                                        - Reset simulation state to 09/01 seed")
-    print("  /quick <1-11>                                 - Run quick simulation test case (TC-01..11)")
+    print(
+        "  /quick <1-11>                                 - Run quick simulation test case (TC-01..11)"
+    )
     print("  /help                                         - Show this guide")
     print("  /exit or quit                                 - Exit demo")
-    print(f"{Colors.CYAN}{'-'*80}{Colors.RESET}\n")
+    print(f"{Colors.CYAN}{'-' * 80}{Colors.RESET}\n")
 
 
 def execute_quick_scenario(tc_num: int, current_persona: str) -> str:
@@ -73,8 +79,14 @@ def execute_quick_scenario(tc_num: int, current_persona: str) -> str:
         1: ("gina", "What is my schedule for tomorrow (2026-09-02)?"),
         2: ("gor", "Schedule a 2.5 hour serve training session on 2026-09-02 at 14:00"),
         3: ("gor", "Schedule 90-min training on 2026-09-02 at 14:30"),
-        4: ("ma", "Workout syllabus for 2026-09-02: Core stability and hip mobility with resistance bands"),
-        5: ("ma", "Meal plan for 2026-09-02: Breakfast oatmeal with berries, lunch grilled chicken quinoa, dinner salmon salad"),
+        4: (
+            "ma",
+            "Workout syllabus for 2026-09-02: Core stability and hip mobility with resistance bands",
+        ),
+        5: (
+            "ma",
+            "Meal plan for 2026-09-02: Breakfast oatmeal with berries, lunch grilled chicken quinoa, dinner salmon salad",
+        ),
         6: ("beita", "Book sponsor meet-and-greet on 2026-09-02 at 11:00 AM"),
         7: ("gor", "Schedule court training on 2026-09-03 at 10:00 AM"),
         8: ("sai", "Book opponent tactical analysis on 2026-09-03 for Sofia Kenin match"),
@@ -87,7 +99,9 @@ def execute_quick_scenario(tc_num: int, current_persona: str) -> str:
         return f"Unknown quick test number {tc_num}. Choose 1 through 11."
 
     target_persona, prompt = scenarios[tc_num]
-    print(f"{Colors.BOLD}[Quick Run TC-{tc_num:02d}]{Colors.RESET} Sending as {target_persona.upper()}: '{prompt}'")
+    print(
+        f"{Colors.BOLD}[Quick Run TC-{tc_num:02d}]{Colors.RESET} Sending as {target_persona.upper()}: '{prompt}'"
+    )
     return run_turn(f"[As {target_persona.capitalize()}] {prompt}", persona=target_persona)
 
 
@@ -124,7 +138,9 @@ def main():
             parts = user_input.split()
             if len(parts) > 1 and parts[1].lower() in PERSONA_COLORS:
                 current_persona = parts[1].lower()
-                print(f"Switched persona to {Colors.BOLD}{current_persona.upper()}{Colors.RESET}.\n")
+                print(
+                    f"Switched persona to {Colors.BOLD}{current_persona.upper()}{Colors.RESET}.\n"
+                )
             else:
                 print("Usage: /persona <gina|gor|sai|ma|beita|coordinator>\n")
             continue
@@ -138,7 +154,9 @@ def main():
 
         if cmd_lower == "/reset":
             reset_store_state()
-            print(f"{Colors.GREEN}Simulation state reset to reference date 2026-09-01.{Colors.RESET}\n")
+            print(
+                f"{Colors.GREEN}Simulation state reset to reference date 2026-09-01.{Colors.RESET}\n"
+            )
             continue
 
         if cmd_lower.startswith("/quick"):
@@ -154,21 +172,29 @@ def main():
         # Handle interactive HITL keywords directly if desired
         if user_input.strip() in ("[Approve]", "[Approve Override]", "approve", "yes", "confirm"):
             res = calendar_store.approve_pending_proposal()
-            print(f"\n{Colors.GREEN}{Colors.BOLD}Proposal Approved:{Colors.RESET} {res.get('message')}")
+            print(
+                f"\n{Colors.GREEN}{Colors.BOLD}Proposal Approved:{Colors.RESET} {res.get('message')}"
+            )
             if "coupled_workout" in res:
                 print(f"• Downstream auto-booking: {res['coupled_workout']}")
             if "bumped_event" in res:
                 bumped = res["bumped_event"]
-                print(f"• Bumped Event: '{bumped['title']}' ({bumped['original_slot']}) marked BUMPED_BY_OVERRIDE.")
+                print(
+                    f"• Bumped Event: '{bumped['title']}' ({bumped['original_slot']}) marked BUMPED_BY_OVERRIDE."
+                )
             if "reschedule_suggestion" in res:
                 sugg = res["reschedule_suggestion"]
-                print(f"• Assisted Rescheduling Recommendation to {sugg['recipient']}: {sugg['message']}")
+                print(
+                    f"• Assisted Rescheduling Recommendation to {sugg['recipient']}: {sugg['message']}"
+                )
             print()
             continue
 
         if user_input.strip() in ("[Reject]", "reject", "no", "cancel"):
             res = calendar_store.reject_pending_proposal()
-            print(f"\n{Colors.YELLOW}{Colors.BOLD}Proposal Rejected:{Colors.RESET} {res.get('message')}\n")
+            print(
+                f"\n{Colors.YELLOW}{Colors.BOLD}Proposal Rejected:{Colors.RESET} {res.get('message')}\n"
+            )
             continue
 
         # Dispatch conversational query to ADK Multi-Agent Runner

@@ -7,25 +7,23 @@ results_<timestamp>.json and results_<timestamp>.html reports to artifacts/eval_
 """
 
 import argparse
-from datetime import datetime
 import json
 import os
 import re
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
+from typing import Any
+
+from dotenv import load_dotenv
+from google import genai
 
 # Ensure local package path is in sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-# Load environment variables (.env) if present; in GCP, credentials are provided via ADC or Secret Manager
-from dotenv import load_dotenv
-
 load_dotenv()
 
-from google import genai
-from app.agent import run_turn
-from app.engine import calendar_store
-from app.tools import reset_store_state
+from app.agent import run_turn  # noqa: E402
+from app.engine import calendar_store  # noqa: E402
+from app.tools import reset_store_state  # noqa: E402
 
 JUDGE_MODEL = os.getenv("EVAL_JUDGE_MODEL", "gemini-3.6-flash")
 
@@ -44,7 +42,11 @@ def setup_case_preconditions(case_id: str):
     """Set up deterministic prerequisite state for specific eval scenarios."""
     reset_store_state()
 
-    if case_id in ("eval_tc04_workout_syllabus", "eval_tc06_pr_training_conflict", "eval_tc07_fatigue_guardrail"):
+    if case_id in (
+        "eval_tc04_workout_syllabus",
+        "eval_tc06_pr_training_conflict",
+        "eval_tc07_fatigue_guardrail",
+    ):
         # Pre-book court training (14:30-16:00) and workout (13:30-14:30) on 09/02
         calendar_store.propose_training("2026-09-02", "14:30", 90)
         calendar_store.approve_pending_proposal()
@@ -65,7 +67,7 @@ def evaluate_with_llm_judge(
     reference_text: str,
     response_text: str,
     rubric_text: str,
-) -> Tuple[int, str]:
+) -> tuple[int, str]:
     """Grade an agent response using Gemini as an LLM judge."""
     eval_prompt = f"""You are an expert AI agent evaluation judge for a sports-science tennis management system.
 Evaluate the following actual agent response against the user prompt, reference intent, and rubric criteria.
@@ -111,13 +113,15 @@ Example format:
         return 4, f"Judge evaluation fallback: {e}"
 
 
-def run_evaluation(dataset_path: str, max_cases: Optional[int] = None) -> Dict[str, Any]:
-    print(f"\n{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.CYAN}🎾 SMALL-TEAM-SUPPORT-AGENT: BEHAVIORAL AGENT EVALUATION (LLM-as-a-Judge){Colors.RESET}")
+def run_evaluation(dataset_path: str, max_cases: int | None = None) -> dict[str, Any]:
+    print(f"\n{Colors.BOLD}{Colors.CYAN}{'=' * 80}{Colors.RESET}")
+    print(
+        f"{Colors.BOLD}{Colors.CYAN}🎾 SMALL-TEAM-SUPPORT-AGENT: BEHAVIORAL AGENT EVALUATION (LLM-as-a-Judge){Colors.RESET}"
+    )
     print(f"{Colors.CYAN}Judge Model: {JUDGE_MODEL} | Dataset: {dataset_path}{Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.RESET}\n")
+    print(f"{Colors.BOLD}{Colors.CYAN}{'=' * 80}{Colors.RESET}\n")
 
-    with open(dataset_path, "r") as f:
+    with open(dataset_path) as f:
         dataset = json.load(f)
 
     eval_cases = dataset.get("eval_cases", [])
@@ -125,7 +129,7 @@ def run_evaluation(dataset_path: str, max_cases: Optional[int] = None) -> Dict[s
         eval_cases = eval_cases[:max_cases]
 
     client = genai.Client()
-    case_results: List[Dict[str, Any]] = []
+    case_results: list[dict[str, Any]] = []
 
     for idx, case in enumerate(eval_cases, 1):
         case_id = case.get("eval_case_id", f"case_{idx}")
@@ -140,9 +144,13 @@ def run_evaluation(dataset_path: str, max_cases: Optional[int] = None) -> Dict[s
         for rg in case.get("rubric_groups", {}).values():
             for r in rg.get("rubrics", []):
                 rubric_items.append(r.get("content", {}).get("property", {}).get("description", ""))
-        rubric_text = "\n".join(f"- {r}" for r in rubric_items) if rubric_items else "Standard helpfulness."
+        rubric_text = (
+            "\n".join(f"- {r}" for r in rubric_items) if rubric_items else "Standard helpfulness."
+        )
 
-        print(f"{Colors.BOLD}[{idx}/{len(eval_cases)}] Evaluating {case_id} (Persona: {persona}){Colors.RESET}")
+        print(
+            f"{Colors.BOLD}[{idx}/{len(eval_cases)}] Evaluating {case_id} (Persona: {persona}){Colors.RESET}"
+        )
         print(f"  Prompt: '{user_prompt}'")
 
         # 1. Setup deterministic preconditions
@@ -187,13 +195,21 @@ def run_evaluation(dataset_path: str, max_cases: Optional[int] = None) -> Dict[s
     passed_count = sum(1 for c in case_results if c["passed"])
     avg_score = sum(c["score"] for c in case_results) / total if total > 0 else 0.0
 
-    print(f"{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.CYAN}EVALUATION SCORECARD: {passed_count}/{total} PASSED (Avg Score: {avg_score:.2f} / 5.0){Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.RESET}")
+    print(f"{Colors.BOLD}{Colors.CYAN}{'=' * 80}{Colors.RESET}")
+    print(
+        f"{Colors.BOLD}{Colors.CYAN}EVALUATION SCORECARD: {passed_count}/{total} PASSED (Avg Score: {avg_score:.2f} / 5.0){Colors.RESET}"
+    )
+    print(f"{Colors.BOLD}{Colors.CYAN}{'=' * 80}{Colors.RESET}")
     for c in case_results:
-        st = f"{Colors.GREEN}PASS{Colors.RESET}" if c["passed"] else f"{Colors.RED}FAIL{Colors.RESET}"
-        print(f"{c['case_id']:<30} | {c['persona']:<8} | Score: {c['score']}/5 | {st} | {c['explanation'][:50]}...")
-    print(f"{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.RESET}\n")
+        st = (
+            f"{Colors.GREEN}PASS{Colors.RESET}"
+            if c["passed"]
+            else f"{Colors.RED}FAIL{Colors.RESET}"
+        )
+        print(
+            f"{c['case_id']:<30} | {c['persona']:<8} | Score: {c['score']}/5 | {st} | {c['explanation'][:50]}..."
+        )
+    print(f"{Colors.BOLD}{Colors.CYAN}{'=' * 80}{Colors.RESET}\n")
 
     # Save artifacts
     artifacts_dir = os.path.join(os.path.dirname(__file__), "artifacts", "eval_results")
@@ -253,7 +269,7 @@ def run_evaluation(dataset_path: str, max_cases: Optional[int] = None) -> Dict[s
     with open(html_path, "w") as f:
         f.write(html_content)
 
-    print(f"Evaluation report artifacts saved to:")
+    print("Evaluation report artifacts saved to:")
     print(f"  • JSON: {json_path}")
     print(f"  • HTML: {html_path}\n")
 
@@ -261,13 +277,19 @@ def run_evaluation(dataset_path: str, max_cases: Optional[int] = None) -> Dict[s
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run behavioral LLM evaluation for small-team-support-agent.")
+    parser = argparse.ArgumentParser(
+        description="Run behavioral LLM evaluation for small-team-support-agent."
+    )
     parser.add_argument(
         "--dataset",
-        default=os.path.join(os.path.dirname(__file__), "tests", "eval", "datasets", "team_support_eval.json"),
+        default=os.path.join(
+            os.path.dirname(__file__), "tests", "eval", "datasets", "team_support_eval.json"
+        ),
         help="Path to evaluation dataset JSON.",
     )
-    parser.add_argument("--max-cases", type=int, default=None, help="Limit number of eval cases to run.")
+    parser.add_argument(
+        "--max-cases", type=int, default=None, help="Limit number of eval cases to run."
+    )
     args = parser.parse_args()
 
     report = run_evaluation(args.dataset, args.max_cases)

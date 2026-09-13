@@ -5,7 +5,7 @@ priority collisions, quiet hours) from LLM intelligence.
 """
 
 from datetime import date, datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from app.models import (
     CalendarEvent,
@@ -55,11 +55,11 @@ class CalendarStore:
 
     def __init__(self):
         self.current_date = SIMULATION_REFERENCE_DATE
-        self.events: List[CalendarEvent] = []
-        self.fatigue_history: List[Dict[str, str]] = []
-        self.meals: Dict[str, MealPlan] = {}
-        self.tactical_notes: Dict[str, str] = {}
-        self.pending_proposal: Optional[PendingProposal] = None
+        self.events: list[CalendarEvent] = []
+        self.fatigue_history: list[dict[str, str]] = []
+        self.meals: dict[str, MealPlan] = {}
+        self.tactical_notes: dict[str, str] = {}
+        self.pending_proposal: PendingProposal | None = None
         self.seed()
 
     def seed(self):
@@ -312,23 +312,24 @@ class CalendarStore:
             )
         )
 
-    def get_events_for_date(self, target_date: str) -> List[CalendarEvent]:
+    def get_events_for_date(self, target_date: str) -> list[CalendarEvent]:
         """Return all confirmed or pending events for a date sorted by start_time."""
         events = [
             e
             for e in self.events
-            if e.date == target_date and e.status in (EventStatus.CONFIRMED, EventStatus.PENDING_APPROVAL)
+            if e.date == target_date
+            and e.status in (EventStatus.CONFIRMED, EventStatus.PENDING_APPROVAL)
         ]
         events.sort(key=lambda x: time_to_minutes(x.start_time))
         return events
 
-    def get_all_events_for_date_including_bumped(self, target_date: str) -> List[CalendarEvent]:
+    def get_all_events_for_date_including_bumped(self, target_date: str) -> list[CalendarEvent]:
         """Return all events for a date, including bumped ones."""
         events = [e for e in self.events if e.date == target_date]
         events.sort(key=lambda x: time_to_minutes(x.start_time))
         return events
 
-    def check_fatigue_rule(self, target_date: str) -> Tuple[bool, int, str]:
+    def check_fatigue_rule(self, target_date: str) -> tuple[bool, int, str]:
         """Evaluate the 4-Day Fatigue Guardrail:
 
         Count consecutive training or match days on T-4, T-3, T-2, T-1.
@@ -370,7 +371,9 @@ class CalendarStore:
     def has_game_on_date(self, target_date: str) -> bool:
         """Check if target_date has an official tournament match."""
         return any(
-            e.date == target_date and e.event_type == EventType.GAME and e.status == EventStatus.CONFIRMED
+            e.date == target_date
+            and e.event_type == EventType.GAME
+            and e.status == EventStatus.CONFIRMED
             for e in self.events
         )
 
@@ -385,8 +388,8 @@ class CalendarStore:
         start_time: str,
         duration_minutes: int,
         court: str = "Court 3",
-        syllabus: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        syllabus: str | None = None,
+    ) -> dict[str, Any]:
         """Propose court training for Gor with validation, workout coupling, and conflict/override detection."""
         # 1. Training duration cap <= 120m
         if duration_minutes > 120:
@@ -426,7 +429,7 @@ class CalendarStore:
             for e in existing_events
         )
 
-        workout_event: Optional[CalendarEvent] = None
+        workout_event: CalendarEvent | None = None
         workout_start_min = start_min - 60
         workout_start_time = minutes_to_time(workout_start_min)
         workout_end_time = start_time
@@ -461,8 +464,8 @@ class CalendarStore:
                 conflicts.append(ev)
 
         # Check conflict priorities
-        overridden_event: Optional[CalendarEvent] = None
-        reschedule_suggestion: Optional[CalendarEvent] = None
+        overridden_event: CalendarEvent | None = None
+        reschedule_suggestion: CalendarEvent | None = None
 
         for conf in conflicts:
             if conf.priority <= 3:  # P1 (Game), P2 (Game buffers), P3 (Training/Workout)
@@ -559,7 +562,7 @@ class CalendarStore:
 
     def find_next_pr_slot(
         self, target_date: str, duration_minutes: int = 60, after_time: str = "16:00"
-    ) -> Optional[CalendarEvent]:
+    ) -> CalendarEvent | None:
         """Find the next compliant open timeslot between 10:00 and 18:00 for PR."""
         start_bound = max(time_to_minutes("10:00"), time_to_minutes(after_time))
         end_bound = time_to_minutes("18:00")
@@ -607,14 +610,14 @@ class CalendarStore:
             overridable=True,
         )
 
-    def approve_pending_proposal(self) -> Dict[str, Any]:
+    def approve_pending_proposal(self) -> dict[str, Any]:
         """Approve and commit the current pending proposal to CalendarStore."""
         if not self.pending_proposal:
             return {"success": False, "message": "No pending proposal to approve."}
 
         prop = self.pending_proposal
         # If this proposal overrides an existing event, mark that event as bumped
-        bumped_event: Optional[CalendarEvent] = None
+        bumped_event: CalendarEvent | None = None
         if prop.overridden_event_id:
             for ev in self.events:
                 if ev.id == prop.overridden_event_id:
@@ -675,7 +678,7 @@ class CalendarStore:
 
         return response
 
-    def reject_pending_proposal(self) -> Dict[str, Any]:
+    def reject_pending_proposal(self) -> dict[str, Any]:
         """Reject and discard the active pending proposal."""
         if not self.pending_proposal:
             return {"success": False, "message": "No pending proposal to reject."}
@@ -688,8 +691,8 @@ class CalendarStore:
         start_time: str,
         end_time: str,
         title: str,
-        notes: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        notes: str | None = None,
+    ) -> dict[str, Any]:
         """Book a PR/Business event for Beita with all constraint validations:
 
         - Allowed strictly 10:00 - 18:00
@@ -785,8 +788,8 @@ class CalendarStore:
         start_time: str = "10:30",
         end_time: str = "11:30",
         opponent: str = "Sofia Kenin",
-        tactical_notes: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        tactical_notes: str | None = None,
+    ) -> dict[str, Any]:
         """Book Sai's opponent tactical scouting session.
 
         - Allowed strictly on the day before a game day.
@@ -796,7 +799,7 @@ class CalendarStore:
             return {
                 "success": False,
                 "error_code": "NOT_PRE_GAME_DAY",
-                "message": f"Opponent analysis rejected: Tactical scouting sessions are permitted only on the day prior to an official match.",
+                "message": "Opponent analysis rejected: Tactical scouting sessions are permitted only on the day prior to an official match.",
             }
 
         s_min = time_to_minutes(start_time)
@@ -842,9 +845,7 @@ class CalendarStore:
             "tactical_notes": tactical_notes,
         }
 
-    def update_workout_syllabus(
-        self, workout_date: str, syllabus: str
-    ) -> Dict[str, Any]:
+    def update_workout_syllabus(self, workout_date: str, syllabus: str) -> dict[str, Any]:
         """Ma attaches physical therapy / workout syllabus to auto-booked workout slot."""
         events = self.get_events_for_date(workout_date)
         workout_event = next((e for e in events if e.event_type == EventType.WORKOUT), None)
@@ -865,10 +866,10 @@ class CalendarStore:
     def record_meal_plan(
         self,
         meal_date: str,
-        breakfast_items: List[str],
-        lunch_items: List[str],
-        dinner_items: List[str],
-    ) -> Dict[str, Any]:
+        breakfast_items: list[str],
+        lunch_items: list[str],
+        dinner_items: list[str],
+    ) -> dict[str, Any]:
         """Ma records daily nutrition plan and triggers mock food order."""
         order_id = f"ORDER-{meal_date.replace('-', '')}-{datetime.now().strftime('%H%M%S')}"
         meal_plan = MealPlan(
@@ -883,7 +884,9 @@ class CalendarStore:
 
         # Ensure or update meal entries in calendar
         events = self.get_events_for_date(meal_date)
-        bf_ev = next((e for e in events if e.event_type == EventType.MEAL and "Breakfast" in e.title), None)
+        bf_ev = next(
+            (e for e in events if e.event_type == EventType.MEAL and "Breakfast" in e.title), None
+        )
         if bf_ev:
             bf_ev.title = f"Breakfast ({', '.join(breakfast_items)})"
             bf_ev.syllabus_or_notes = f"Ordered via {order_id}"
@@ -903,7 +906,9 @@ class CalendarStore:
                 )
             )
 
-        lu_ev = next((e for e in events if e.event_type == EventType.MEAL and "Lunch" in e.title), None)
+        lu_ev = next(
+            (e for e in events if e.event_type == EventType.MEAL and "Lunch" in e.title), None
+        )
         if lu_ev:
             lu_ev.title = f"Lunch ({', '.join(lunch_items)})"
             lu_ev.syllabus_or_notes = f"Ordered via {order_id}"
@@ -923,7 +928,9 @@ class CalendarStore:
                 )
             )
 
-        di_ev = next((e for e in events if e.event_type == EventType.MEAL and "Dinner" in e.title), None)
+        di_ev = next(
+            (e for e in events if e.event_type == EventType.MEAL and "Dinner" in e.title), None
+        )
         if di_ev:
             di_ev.title = f"Dinner ({', '.join(dinner_items)})"
             di_ev.syllabus_or_notes = f"Ordered via {order_id}"

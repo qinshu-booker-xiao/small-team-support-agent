@@ -1,11 +1,11 @@
 """Domain models and Pydantic schemas for the small-team-support-agent."""
 
-from enum import Enum
-from typing import Optional, List
+from enum import StrEnum
+
 from pydantic import BaseModel, Field
 
 
-class EventType(str, Enum):
+class EventType(StrEnum):
     GAME = "GAME"
     PRE_GAME_WARMUP = "PRE_GAME_WARMUP"
     POST_GAME_MEDIA = "POST_GAME_MEDIA"
@@ -17,7 +17,7 @@ class EventType(str, Enum):
     MEAL = "MEAL"
 
 
-class EventStatus(str, Enum):
+class EventStatus(StrEnum):
     PENDING_APPROVAL = "PENDING_APPROVAL"
     CONFIRMED = "CONFIRMED"
     BUMPED_BY_OVERRIDE = "BUMPED_BY_OVERRIDE"
@@ -31,7 +31,7 @@ class CalendarEvent(BaseModel):
     end_time: str  # HH:MM
     event_type: EventType
     title: str
-    syllabus_or_notes: Optional[str] = None
+    syllabus_or_notes: str | None = None
     requested_by: str  # Gina, Gor, Sai, Ma, Beita, System
     priority: int  # 1 (Highest) to 5 (Lowest)
     status: EventStatus = EventStatus.CONFIRMED
@@ -40,18 +40,18 @@ class CalendarEvent(BaseModel):
 
 class MealPlan(BaseModel):
     date: str
-    breakfast_items: List[str]
-    lunch_items: List[str]
-    dinner_items: List[str]
-    order_id: Optional[str] = None
+    breakfast_items: list[str]
+    lunch_items: list[str]
+    dinner_items: list[str]
+    order_id: str | None = None
     status: str = "ORDERED"
 
 
 class PendingProposal(BaseModel):
     proposal_id: str
     event: CalendarEvent
-    coupled_event: Optional[CalendarEvent] = None
-    overridden_event_id: Optional[str] = None
-    reschedule_suggestion: Optional[CalendarEvent] = None
+    coupled_event: CalendarEvent | None = None
+    overridden_event_id: str | None = None
+    reschedule_suggestion: CalendarEvent | None = None
     prompt_message: str
-    options: List[str] = Field(default_factory=lambda: ["[Approve]", "[Reject]"])
+    options: list[str] = Field(default_factory=lambda: ["[Approve]", "[Reject]"])

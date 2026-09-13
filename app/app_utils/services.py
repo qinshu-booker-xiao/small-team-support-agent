@@ -31,9 +31,7 @@ from google.adk.cli.utils.service_factory import create_session_service_from_opt
 SESSION_SERVICE_URI = "shared://session"
 ARTIFACT_SERVICE_URI = "shared://artifact"
 
-_AGENT_DIR = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-)
+_AGENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 @functools.cache
@@ -42,12 +40,11 @@ def get_session_service():
     use_firestore = os.getenv("USE_FIRESTORE", "false").lower() in ("true", "1")
     if use_firestore:
         from app.sessions import get_session_service as get_custom_session_service
+
         return get_custom_session_service()
 
     if uri := os.environ.get("SESSION_SERVICE_URI"):
-        return create_session_service_from_options(
-            base_dir=_AGENT_DIR, session_service_uri=uri
-        )
+        return create_session_service_from_options(base_dir=_AGENT_DIR, session_service_uri=uri)
     if agent_engine_id := os.environ.get("GOOGLE_CLOUD_AGENT_ENGINE_ID"):
         from google.adk.sessions.vertex_ai_session_service import VertexAiSessionService
 

@@ -3,7 +3,8 @@
 Exposes clean, type-annotated tool functions for the ADK agents to invoke.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
+
 from app.engine import calendar_store
 
 
@@ -26,8 +27,8 @@ def propose_court_training(
     start_time: str,
     duration_minutes: int,
     court: str = "Court 3",
-    syllabus: Optional[str] = None,
-) -> Dict[str, Any]:
+    syllabus: str | None = None,
+) -> dict[str, Any]:
     """Propose a court training session for Head Coach Gor.
 
     Enforces:
@@ -56,7 +57,7 @@ def propose_court_training(
     )
 
 
-def approve_pending_proposal() -> Dict[str, Any]:
+def approve_pending_proposal() -> dict[str, Any]:
     """Approve and commit the active pending proposal (e.g. Gor's training booking or override).
 
     Downstream cascading bookings (such as Ma's workout or assisted PR rescheduling)
@@ -68,7 +69,7 @@ def approve_pending_proposal() -> Dict[str, Any]:
     return calendar_store.approve_pending_proposal()
 
 
-def reject_pending_proposal() -> Dict[str, Any]:
+def reject_pending_proposal() -> dict[str, Any]:
     """Reject and cancel the current pending proposal without altering the calendar.
 
     Returns:
@@ -82,8 +83,8 @@ def book_pr_activity(
     start_time: str,
     end_time: str,
     title: str,
-    notes: Optional[str] = None,
-) -> Dict[str, Any]:
+    notes: str | None = None,
+) -> dict[str, Any]:
     """Book a PR, sponsor, or media session for Personal Assistant Beita.
 
     Enforces:
@@ -116,8 +117,8 @@ def book_opponent_tactical_analysis(
     start_time: str = "10:30",
     end_time: str = "11:30",
     opponent: str = "Sofia Kenin",
-    tactical_notes: Optional[str] = None,
-) -> Dict[str, Any]:
+    tactical_notes: str | None = None,
+) -> dict[str, Any]:
     """Book an opponent tactical scouting and video analysis session for Coach II Sai.
 
     Enforces:
@@ -143,7 +144,7 @@ def book_opponent_tactical_analysis(
     )
 
 
-def set_workout_syllabus(workout_date: str, syllabus: str) -> Dict[str, Any]:
+def set_workout_syllabus(workout_date: str, syllabus: str) -> dict[str, Any]:
     """Attach the physical therapy and conditioning syllabus for Physical Therapist Ma.
 
     Updates the auto-coupled pre-training workout session.
@@ -160,10 +161,10 @@ def set_workout_syllabus(workout_date: str, syllabus: str) -> Dict[str, Any]:
 
 def order_daily_meals(
     meal_date: str,
-    breakfast: List[str],
-    lunch: List[str],
-    dinner: List[str],
-) -> Dict[str, Any]:
+    breakfast: list[str],
+    lunch: list[str],
+    dinner: list[str],
+) -> dict[str, Any]:
     """Record nutritional menus and trigger mock food delivery for Physical Therapist Ma.
 
     Args:
@@ -193,10 +194,11 @@ def query_team_memory(query: str = "Gina preferences") -> str:
         Relevant knowledge entries from the team's long-term memory bank.
     """
     from app.sessions import team_memory_bank
+
     return team_memory_bank.format_memories_prompt(query)
 
 
-def reset_store_state() -> Dict[str, str]:
+def reset_store_state() -> dict[str, str]:
     """Reset the CalendarStore to the initial pre-seeded tournament simulation state."""
     calendar_store.seed()
     return {"status": "SUCCESS", "message": "Simulation calendar state successfully reset to seed."}

@@ -20,7 +20,10 @@ small-team-support-agent/
 │   ├── models.py          # Pydantic schemas (CalendarEvent, MealPlan, Enums)
 │   ├── engine.py          # Deterministic CalendarStore, Fatigue, Buffers & Formatter
 │   ├── tools.py           # ADK 2.0 FunctionTools wrapping the engine
-│   └── agent.py           # Strategic Model Routed Multi-Agent System
+│   ├── agent.py           # Strategic Model Routed Multi-Agent System (Compaction enabled)
+│   ├── sessions.py        # FirestoreSessionService & TeamMemoryBank persistence
+│   ├── fast_api_app.py    # FastAPI server exposing ADK & A2A protocol routes
+│   └── app_utils/         # Shared service registry & dynamic A2A endpoint mounter
 ├── tests/
 │   └── eval/
 │       ├── datasets/
@@ -28,11 +31,13 @@ small-team-support-agent/
 │       └── eval_config.yaml           # LLM-as-judge rubric metric configuration
 ├── docs/
 │   └── design_spec_small_team_support_agent.md
+├── Dockerfile             # Container definition for Cloud Run / Agent Runtime
+├── agents-cli-manifest.yaml # agents-cli deployment manifest
 ├── run_demo.py            # Interactive terminal CLI with colored persona switcher
 ├── verify_demo.py         # Automated test runner asserting TC-01 through TC-11
 ├── run_eval.py            # Automated LLM-as-a-judge behavioral evaluation runner
 ├── README.md              # Project documentation and usage guide
-└── pyproject.toml         # Package definition (google-adk, pydantic)
+└── pyproject.toml         # Package definition & tool.ruff linting config
 ```
 
 ### Strategic Model Routing
@@ -116,4 +121,30 @@ agents-cli deploy \
 - Plaintext key file fallbacks (e.g. `~/gemini_key.txt`) are eliminated.
 - Local execution relies on `.env` (strictly gitignored).
 - Cloud Run / GCP execution uses Application Default Credentials (ADC) or GCP Secret Manager (`--secrets GEMINI_API_KEY=my-gemini-key`).
+
+---
+
+## Code Quality & Linting
+
+The project enforces PEP 8 and Python 3.12+ syntax standards via **Ruff**:
+
+```bash
+# Check linting rules across codebase
+ruff check .
+
+# Check code formatting
+ruff format --check .
+
+# Auto-format codebase
+ruff format .
+```
+
+---
+
+## GitHub Repository
+
+- **Repository**: [https://github.com/qinshu-booker-xiao/small-team-support-agent](https://github.com/qinshu-booker-xiao/small-team-support-agent)
+- **Default Branch**: `main`
+- **License**: Apache 2.0 / Proprietary to WTA Gina Team
+
 

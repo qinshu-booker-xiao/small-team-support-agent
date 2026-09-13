@@ -26,9 +26,7 @@ from app.app_utils import services
 from app.app_utils.a2a import attach_a2a_routes
 
 load_dotenv()
-allow_origins = (
-    os.getenv("ALLOW_ORIGINS", "").split(",") if os.getenv("ALLOW_ORIGINS") else None
-)
+allow_origins = os.getenv("ALLOW_ORIGINS", "").split(",") if os.getenv("ALLOW_ORIGINS") else None
 otel_to_cloud = os.getenv("OTEL_TO_CLOUD", "false").lower() in ("true", "1")
 
 AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

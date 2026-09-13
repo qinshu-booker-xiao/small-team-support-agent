@@ -12,13 +12,8 @@ Defines the Coordinator Agent and Specialist Sub-Agents:
 import asyncio
 import os
 import re
-from typing import AsyncGenerator, Dict, List, Optional, Tuple
 
-# Load environment variables (.env) if present; in GCP, credentials are provided via ADC or Secret Manager
 from dotenv import load_dotenv
-
-load_dotenv()
-
 from google.adk.agents import Agent
 from google.adk.apps import App
 from google.adk.apps.app import EventsCompactionConfig
@@ -35,9 +30,11 @@ from app.tools import (
     propose_court_training,
     query_team_memory,
     reject_pending_proposal,
-    reset_store_state,
     set_workout_syllabus,
 )
+
+# Load environment variables (.env) if present; in GCP, credentials are provided via ADC or Secret Manager
+load_dotenv()
 
 # Strategic Model Routing Configuration
 MODEL_COORDINATOR = os.getenv("MODEL_COORDINATOR", "gemini-3.6-flash")
@@ -215,7 +212,7 @@ app = App(
 )
 
 # Registry mapping persona names to agents
-PERSONA_AGENT_MAP: Dict[str, Agent] = {
+PERSONA_AGENT_MAP: dict[str, Agent] = {
     "gor": gor_agent,
     "coach gor": gor_agent,
     "sai": sai_agent,
@@ -228,7 +225,7 @@ PERSONA_AGENT_MAP: Dict[str, Agent] = {
 }
 
 
-def extract_persona(text: str) -> Tuple[Optional[str], str]:
+def extract_persona(text: str) -> tuple[str | None, str]:
     """Extract persona tag like '[As Gor]' from the prompt if present."""
     match = re.match(r"^\s*\[(?:As\s+)?([A-Za-z]+)\]\s*(.*)$", text, re.IGNORECASE | re.DOTALL)
     if match:
@@ -241,33 +238,43 @@ class SupportAgentRunner:
 
     def __init__(self):
         self.session_service = get_session_service()
-        self.runners: Dict[str, Runner] = {
+        self.runners: dict[str, Runner] = {
             "coordinator": Runner(app=app, session_service=self.session_service),
             "gor": Runner(
-                app=App(name="app", root_agent=gor_agent, events_compaction_config=compaction_config),
+                app=App(
+                    name="app", root_agent=gor_agent, events_compaction_config=compaction_config
+                ),
                 session_service=self.session_service,
             ),
             "sai": Runner(
-                app=App(name="app", root_agent=sai_agent, events_compaction_config=compaction_config),
+                app=App(
+                    name="app", root_agent=sai_agent, events_compaction_config=compaction_config
+                ),
                 session_service=self.session_service,
             ),
             "ma": Runner(
-                app=App(name="app", root_agent=ma_agent, events_compaction_config=compaction_config),
+                app=App(
+                    name="app", root_agent=ma_agent, events_compaction_config=compaction_config
+                ),
                 session_service=self.session_service,
             ),
             "beita": Runner(
-                app=App(name="app", root_agent=beita_agent, events_compaction_config=compaction_config),
+                app=App(
+                    name="app", root_agent=beita_agent, events_compaction_config=compaction_config
+                ),
                 session_service=self.session_service,
             ),
             "gina": Runner(
-                app=App(name="app", root_agent=gina_agent, events_compaction_config=compaction_config),
+                app=App(
+                    name="app", root_agent=gina_agent, events_compaction_config=compaction_config
+                ),
                 session_service=self.session_service,
             ),
         }
-        self.sessions: Dict[str, str] = {}
+        self.sessions: dict[str, str] = {}
 
     async def execute_turn(
-        self, user_input: str, persona: Optional[str] = None, user_id: str = "team_user"
+        self, user_input: str, persona: str | None = None, user_id: str = "team_user"
     ) -> str:
         """Execute a conversational turn dispatched to the appropriate agent."""
         # 1. Check for explicit persona tag in message
@@ -309,6 +316,6 @@ class SupportAgentRunner:
 agent_runner = SupportAgentRunner()
 
 
-def run_turn(user_input: str, persona: Optional[str] = None) -> str:
+def run_turn(user_input: str, persona: str | None = None) -> str:
     """Synchronous entry point for running a conversational turn."""
     return asyncio.run(agent_runner.execute_turn(user_input, persona))

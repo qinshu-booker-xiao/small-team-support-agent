@@ -177,7 +177,7 @@ INITIAL_STORE_STATE = {
     "fatigue_history": [
         {"date": "2026-08-30", "event_type": "TRAINING", "title": "Court 1 Training"},
         {"date": "2026-08-31", "event_type": "TRAINING", "title": "Court 2 Training"},
-        {"date": "2026-09-01", "event_type": "TRAINING", "title": "Court 1 Training"}
+        {"date": "2026-09-01", "event_type": "TRAINING", "title": "Court 1 Training"},
     ],
     "tournament_matches": [
         {
@@ -189,14 +189,14 @@ INITIAL_STORE_STATE = {
             "round": "Round of 16",
             "court": "Grandstand Court",
             "event_type": "GAME",
-            "priority": 1
+            "priority": 1,
         }
     ],
     "fixed_meals": {
         "breakfast": ("07:00", "07:30"),
         "lunch": ("12:00", "13:00"),
-        "dinner": ("18:00", "19:00")
-    }
+        "dinner": ("18:00", "19:00"),
+    },
 }
 ```
 
@@ -337,6 +337,7 @@ from enum import Enum
 from typing import Optional, List
 from pydantic import BaseModel, Field
 
+
 class EventType(str, Enum):
     GAME = "GAME"
     PRE_GAME_WARMUP = "PRE_GAME_WARMUP"
@@ -348,11 +349,13 @@ class EventType(str, Enum):
     BUSINESS_SOCIAL = "BUSINESS_SOCIAL"
     MEAL = "MEAL"
 
+
 class EventStatus(str, Enum):
     PENDING_APPROVAL = "PENDING_APPROVAL"
     CONFIRMED = "CONFIRMED"
     BUMPED_BY_OVERRIDE = "BUMPED_BY_OVERRIDE"
     CANCELLED = "CANCELLED"
+
 
 class CalendarEvent(BaseModel):
     id: str
@@ -366,6 +369,7 @@ class CalendarEvent(BaseModel):
     priority: int  # 1 (Highest) to 5 (Lowest)
     status: EventStatus = EventStatus.CONFIRMED
     overridable: bool = False
+
 
 class MealPlan(BaseModel):
     date: str
@@ -432,4 +436,30 @@ Adheres to the canonical `EvaluationDataset` schema (`eval_cases` with `prompt`,
 ### 12.3 Execution & Artifacts (`run_eval.py`)
 - Automated evaluation runner executing cases against live models (`gemini-3.6-flash`, `gemini-3.7-flash`, `gemini-3.1-pro-preview`).
 - Outputs timestamped reports to `artifacts/eval_results/results_<timestamp>.json` and human-readable `results_<timestamp>.html`.
+
+---
+
+## 13. Cloud Architecture & Enterprise Serving Surface
+
+### 13.1 Cloud Firestore Native Persistence & Team Memory Bank
+- **Session State**: Conversational turns and state transitions are optionally persisted to Cloud Firestore Native Database (`(default)` in `us-central1`) via `FirestoreSessionService`.
+- **Memory Bank**: Cross-session long-term athlete facts (e.g. dietary preferences, recovery sleep rules, coaching tactics, sponsor photo shoot hours) are indexed in the `team_memories` Firestore collection with dynamic semantic fallback.
+- **In-Memory Fallback**: Seamless fallback to local in-memory session management when `USE_FIRESTORE=false` or when running outside GCP.
+
+### 13.2 Conversation History Compaction
+To avoid token bloat during multi-turn tournament scenarios, all persona sub-agents utilize ADK's `EventsCompactionConfig(token_threshold=16000, event_retention_size=5)`. When conversation history exceeds 16,000 tokens, older turns are automatically compacted into state summaries while retaining the last 5 active events.
+
+### 13.3 Containerized Serving Surface (FastAPI & A2A)
+- **FastAPI Application (`app/fast_api_app.py`)**: Exposes standard ADK HTTP routes (`/run_sse`, `/apps/app/...`).
+- **A2A Protocol**: Exposes Agent-to-Agent JSON-RPC endpoints and dynamic agent cards (`/a2a/app/.well-known/agent-card.json`) allowing external autonomous agent interop.
+- **Docker Packaging**: Containerized via single-stage Python 3.12-slim Dockerfile optimized with `uv`.
+
+### 13.4 Security & Secrets Governance
+- Plaintext key fallbacks from local disk (e.g. `~/gemini_key.txt`) are prohibited.
+- Local execution relies on `.env` (gitignored).
+- GCP Cloud Run / Agent Runtime deployments utilize Application Default Credentials (ADC) or GCP Secret Manager.
+
+### 13.5 Code Quality & Linting Standards
+The codebase adheres strictly to Python 3.12 standards and is validated using **Ruff** for linting and formatting (`ruff check .`, `ruff format --check .`).
+
 

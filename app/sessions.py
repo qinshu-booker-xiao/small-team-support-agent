@@ -8,8 +8,8 @@ Provides:
 
 import logging
 import os
-from typing import Any, Dict, List, Optional
 from datetime import datetime
+from typing import Any
 
 from google.adk.sessions import (
     BaseSessionService,
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 # Check if Firestore library is available
 try:
     from google.cloud import firestore
+
     FIRESTORE_AVAILABLE = True
 except ImportError:
     FIRESTORE_AVAILABLE = False
@@ -36,7 +37,7 @@ class FirestoreSessionService(BaseSessionService):
 
     def __init__(
         self,
-        project: Optional[str] = None,
+        project: str | None = None,
         database: str = "(default)",
         collection_prefix: str = "agent_sessions",
     ):
@@ -48,9 +49,7 @@ class FirestoreSessionService(BaseSessionService):
 
         if FIRESTORE_AVAILABLE and self.project:
             try:
-                self.client = firestore.AsyncClient(
-                    project=self.project, database=self.database
-                )
+                self.client = firestore.AsyncClient(project=self.project, database=self.database)
                 self.use_firestore = True
                 logger.info(f"FirestoreSessionService initialized for project {self.project}")
             except Exception as e:
@@ -67,8 +66,8 @@ class FirestoreSessionService(BaseSessionService):
         self,
         app_name: str,
         user_id: str,
-        state: Optional[Dict[str, Any]] = None,
-        session_id: Optional[str] = None,
+        state: dict[str, Any] | None = None,
+        session_id: str | None = None,
     ) -> Session:
         """Create a new session in Firestore or in-memory fallback."""
         if not self.use_firestore or not self.client:
@@ -95,9 +94,7 @@ class FirestoreSessionService(BaseSessionService):
             logger.error(f"Error persisting session to Firestore: {e}")
         return session
 
-    async def get_session(
-        self, app_name: str, user_id: str, session_id: str
-    ) -> Optional[Session]:
+    async def get_session(self, app_name: str, user_id: str, session_id: str) -> Session | None:
         """Fetch session from in-memory cache or Firestore."""
         session = await self._fallback_service.get_session(
             app_name=app_name, user_id=user_id, session_id=session_id
@@ -137,9 +134,7 @@ class FirestoreSessionService(BaseSessionService):
             except Exception as e:
                 logger.error(f"Error updating session state in Firestore: {e}")
 
-    async def delete_session(
-        self, app_name: str, user_id: str, session_id: str
-    ) -> None:
+    async def delete_session(self, app_name: str, user_id: str, session_id: str) -> None:
         """Delete session."""
         await self._fallback_service.delete_session(
             app_name=app_name, user_id=user_id, session_id=session_id
@@ -151,9 +146,7 @@ class FirestoreSessionService(BaseSessionService):
             except Exception as e:
                 logger.error(f"Error deleting session from Firestore: {e}")
 
-    async def list_sessions(
-        self, app_name: str, user_id: str
-    ) -> List[Session]:
+    async def list_sessions(self, app_name: str, user_id: str) -> list[Session]:
         """List sessions."""
         return await self._fallback_service.list_sessions(app_name=app_name, user_id=user_id)
 
@@ -165,14 +158,14 @@ class TeamMemoryBank:
     Supports Firestore persistence when USE_FIRESTORE=true with local in-memory fallback.
     """
 
-    def __init__(self, project: Optional[str] = None, collection: str = "team_memories"):
+    def __init__(self, project: str | None = None, collection: str = "team_memories"):
         self.project = project or os.getenv("GOOGLE_CLOUD_PROJECT")
         self.collection_name = collection
         use_fs = os.getenv("USE_FIRESTORE", "false").lower() in ("true", "1")
         self.firestore_client = None
 
         # Default seeded long-term memories for Gina & Team
-        self._memories: List[Dict[str, Any]] = [
+        self._memories: list[dict[str, Any]] = [
             {
                 "category": "athlete_preferences",
                 "entity": "Gina",
@@ -235,7 +228,7 @@ class TeamMemoryBank:
             except Exception as e:
                 logger.error(f"Failed to persist memory to Firestore: {e}")
 
-    def search_memories(self, query: str) -> List[Dict[str, Any]]:
+    def search_memories(self, query: str) -> list[dict[str, Any]]:
         """Search relevant facts from memory bank based on keyword relevance."""
         q_lower = query.lower()
         results = []
@@ -253,7 +246,9 @@ class TeamMemoryBank:
         matches = self.search_memories(query)
         lines = ["--- Long-Term Team Memory Bank ---"]
         for m in matches:
-            lines.append(f"• [{m.get('entity', 'Gina')} / {m.get('category', 'general')}]: {m.get('fact', '')}")
+            lines.append(
+                f"• [{m.get('entity', 'Gina')} / {m.get('category', 'general')}]: {m.get('fact', '')}"
+            )
         return "\n".join(lines)
 
 

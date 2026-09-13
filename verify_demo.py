@@ -15,7 +15,6 @@ Asserts TC-01 through TC-11 covering:
 """
 
 import sys
-from typing import List, Tuple
 
 from app.engine import calendar_store
 from app.models import EventStatus, EventType
@@ -32,11 +31,13 @@ class Colors:
 
 
 def run_tests() -> bool:
-    print(f"\n{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.CYAN}🎾 SMALL-TEAM-SUPPORT-AGENT: AUTOMATED VERIFICATION SUITE (TC-01 - TC-11){Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.RESET}\n")
+    print(f"\n{Colors.BOLD}{Colors.CYAN}{'=' * 80}{Colors.RESET}")
+    print(
+        f"{Colors.BOLD}{Colors.CYAN}🎾 SMALL-TEAM-SUPPORT-AGENT: AUTOMATED VERIFICATION SUITE (TC-01 - TC-11){Colors.RESET}"
+    )
+    print(f"{Colors.BOLD}{Colors.CYAN}{'=' * 80}{Colors.RESET}\n")
 
-    results: List[Tuple[str, str, bool, str]] = []
+    results: list[tuple[str, str, bool, str]] = []
 
     # Reset to initial deterministic seed state
     calendar_store.seed()
@@ -53,7 +54,11 @@ def run_tests() -> bool:
         and "11:00 AM" in agenda_output
         and "12:00 PM Lunch" in agenda_output
     )
-    msg01 = "Verified: 06:00 AM breakfast alert silenced; daytime alerts active." if tc01_pass else "Quiet hours failed"
+    msg01 = (
+        "Verified: 06:00 AM breakfast alert silenced; daytime alerts active."
+        if tc01_pass
+        else "Quiet hours failed"
+    )
     results.append(("TC-01", "Gina Schedule & Sleep Quiet Hours", tc01_pass, msg01))
     print(f"  Result: {Colors.GREEN}PASS{Colors.RESET} - {msg01}\n")
 
@@ -63,10 +68,11 @@ def run_tests() -> bool:
     print(f"{Colors.BOLD}[TC-02] Gor Training Duration Cap (> 120 mins rejected){Colors.RESET}")
     res02 = calendar_store.propose_training("2026-09-02", "14:30", duration_minutes=150)
     tc02_pass = (
-        res02.get("success") is False
-        and res02.get("error_code") == "DURATION_LIMIT_EXCEEDED"
+        res02.get("success") is False and res02.get("error_code") == "DURATION_LIMIT_EXCEEDED"
     )
-    msg02 = f"Rejected 150m training: {res02.get('message')}" if tc02_pass else "Failed to reject >120m"
+    msg02 = (
+        f"Rejected 150m training: {res02.get('message')}" if tc02_pass else "Failed to reject >120m"
+    )
     results.append(("TC-02", "Gor Training Duration Cap (<= 120m)", tc02_pass, msg02))
     print(f"  Result: {Colors.GREEN}PASS{Colors.RESET} - {msg02}\n")
 
@@ -82,15 +88,25 @@ def run_tests() -> bool:
         and res03_prop.get("workout_slot") == "13:30 - 14:30"
     )
     res03_app = calendar_store.approve_pending_proposal()
-    app_ok = res03_app.get("success") is True and "14:30 - 16:00" in res03_app.get("training_slot", "")
+    app_ok = res03_app.get("success") is True and "14:30 - 16:00" in res03_app.get(
+        "training_slot", ""
+    )
 
     # Verify both exist in calendar
     events_0902 = calendar_store.get_events_for_date("2026-09-02")
-    has_training = any(e.event_type == EventType.TRAINING and e.start_time == "14:30" for e in events_0902)
-    has_workout = any(e.event_type == EventType.WORKOUT and e.start_time == "13:30" for e in events_0902)
+    has_training = any(
+        e.event_type == EventType.TRAINING and e.start_time == "14:30" for e in events_0902
+    )
+    has_workout = any(
+        e.event_type == EventType.WORKOUT and e.start_time == "13:30" for e in events_0902
+    )
 
     tc03_pass = prop_ok and app_ok and has_training and has_workout
-    msg03 = "Training (14:30-16:00) and workout (13:30-14:30) confirmed." if tc03_pass else "Coupling failed"
+    msg03 = (
+        "Training (14:30-16:00) and workout (13:30-14:30) confirmed."
+        if tc03_pass
+        else "Coupling failed"
+    )
     results.append(("TC-03", "Training Booking & Workout Coupling", tc03_pass, msg03))
     print(f"  Result: {Colors.GREEN}PASS{Colors.RESET} - {msg03}\n")
 
@@ -103,7 +119,11 @@ def run_tests() -> bool:
     events_0902 = calendar_store.get_events_for_date("2026-09-02")
     wk_ev = next((e for e in events_0902 if e.event_type == EventType.WORKOUT), None)
     tc04_pass = res04.get("success") is True and wk_ev and wk_ev.syllabus_or_notes == syllabus_text
-    msg04 = f"Attached syllabus to 13:30 workout: '{syllabus_text}'" if tc04_pass else "Syllabus update failed"
+    msg04 = (
+        f"Attached syllabus to 13:30 workout: '{syllabus_text}'"
+        if tc04_pass
+        else "Syllabus update failed"
+    )
     results.append(("TC-04", "Ma Workout Syllabus Attachment", tc04_pass, msg04))
     print(f"  Result: {Colors.GREEN}PASS{Colors.RESET} - {msg04}\n")
 
@@ -123,7 +143,11 @@ def run_tests() -> bool:
         and res05.get("status") == "ORDERED"
         and "2026-09-02" in calendar_store.meals
     )
-    msg05 = f"Food order {res05.get('order_id')} dispatched with athlete nutritional macros." if tc05_pass else "Meal recording failed"
+    msg05 = (
+        f"Food order {res05.get('order_id')} dispatched with athlete nutritional macros."
+        if tc05_pass
+        else "Meal recording failed"
+    )
     results.append(("TC-05", "Ma Meal Plan & Mock Food Order", tc05_pass, msg05))
     print(f"  Result: {Colors.GREEN}PASS{Colors.RESET} - {msg05}\n")
 
@@ -150,7 +174,11 @@ def run_tests() -> bool:
     )
     book_ok = res06_book.get("success") is True
     tc06_pass = rej_ok and book_ok
-    msg06 = "Morning PR rejected (prior to training); 16:30-17:30 booked successfully." if tc06_pass else "PR constraints failed"
+    msg06 = (
+        "Morning PR rejected (prior to training); 16:30-17:30 booked successfully."
+        if tc06_pass
+        else "PR constraints failed"
+    )
     results.append(("TC-06", "Beita PR Constraints & Booking", tc06_pass, msg06))
     print(f"  Result: {Colors.GREEN}PASS{Colors.RESET} - {msg06}\n")
 
@@ -160,11 +188,12 @@ def run_tests() -> bool:
     print(f"{Colors.BOLD}[TC-07] 4-Day Fatigue Guardrail (08/30 - 09/02 Consecutive){Colors.RESET}")
     # 08/30, 08/31, 09/01 (seed) + 09/02 (booked in TC-03) = 4 days!
     res07 = calendar_store.propose_training("2026-09-03", "10:00", duration_minutes=90)
-    tc07_pass = (
-        res07.get("success") is False
-        and res07.get("error_code") == "FATIGUE_LIMIT_REACHED"
+    tc07_pass = res07.get("success") is False and res07.get("error_code") == "FATIGUE_LIMIT_REACHED"
+    msg07 = (
+        f"Training blocked by 4-day fatigue rule: {res07.get('message')}"
+        if tc07_pass
+        else "Fatigue guardrail failed to trigger"
     )
-    msg07 = f"Training blocked by 4-day fatigue rule: {res07.get('message')}" if tc07_pass else "Fatigue guardrail failed to trigger"
     results.append(("TC-07", "4-Day Fatigue Guardrail Block", tc07_pass, msg07))
     print(f"  Result: {Colors.GREEN}PASS{Colors.RESET} - {msg07}\n")
 
@@ -180,7 +209,11 @@ def run_tests() -> bool:
         tactical_notes="Attack 2nd serve kick to backhand; extend baseline rallies >5 shots.",
     )
     tc08_pass = res08.get("success") is True and res08.get("slot") == "10:30 - 11:30"
-    msg08 = "Opponent scouting session confirmed on pre-match day (10:30-11:30)." if tc08_pass else "Scouting booking failed"
+    msg08 = (
+        "Opponent scouting session confirmed on pre-match day (10:30-11:30)."
+        if tc08_pass
+        else "Scouting booking failed"
+    )
     results.append(("TC-08", "Sai Opponent Analysis Session", tc08_pass, msg08))
     print(f"  Result: {Colors.GREEN}PASS{Colors.RESET} - {msg08}\n")
 
@@ -189,14 +222,39 @@ def run_tests() -> bool:
     # -------------------------------------------------------------------------
     print(f"{Colors.BOLD}[TC-09] Match Day Buffers & Dynamic Meal Shifts{Colors.RESET}")
     events_0904 = calendar_store.get_events_for_date("2026-09-04")
-    has_match = any(e.event_type == EventType.GAME and e.start_time == "14:00" and e.end_time == "16:00" for e in events_0904)
-    has_warmup = any(e.event_type == EventType.PRE_GAME_WARMUP and e.start_time == "12:30" and e.end_time == "13:30" for e in events_0904)
-    has_media = any(e.event_type == EventType.POST_GAME_MEDIA and e.start_time == "16:00" and e.end_time == "16:15" for e in events_0904)
-    has_recovery = any(e.event_type == EventType.POST_GAME_RECOVERY and e.start_time == "16:15" and e.end_time == "17:15" for e in events_0904)
-    has_shifted_lunch = any(e.event_type == EventType.MEAL and e.start_time == "11:30" and e.end_time == "12:15" for e in events_0904)
+    has_match = any(
+        e.event_type == EventType.GAME and e.start_time == "14:00" and e.end_time == "16:00"
+        for e in events_0904
+    )
+    has_warmup = any(
+        e.event_type == EventType.PRE_GAME_WARMUP
+        and e.start_time == "12:30"
+        and e.end_time == "13:30"
+        for e in events_0904
+    )
+    has_media = any(
+        e.event_type == EventType.POST_GAME_MEDIA
+        and e.start_time == "16:00"
+        and e.end_time == "16:15"
+        for e in events_0904
+    )
+    has_recovery = any(
+        e.event_type == EventType.POST_GAME_RECOVERY
+        and e.start_time == "16:15"
+        and e.end_time == "17:15"
+        for e in events_0904
+    )
+    has_shifted_lunch = any(
+        e.event_type == EventType.MEAL and e.start_time == "11:30" and e.end_time == "12:15"
+        for e in events_0904
+    )
 
     tc09_pass = has_match and has_warmup and has_media and has_recovery and has_shifted_lunch
-    msg09 = "Match (14-16), Warm-up (12:30-13:30), Media (16-16:15), Recovery (16:15-17:15), Lunch (11:30-12:15)." if tc09_pass else "Match buffers failed"
+    msg09 = (
+        "Match (14-16), Warm-up (12:30-13:30), Media (16-16:15), Recovery (16:15-17:15), Lunch (11:30-12:15)."
+        if tc09_pass
+        else "Match buffers failed"
+    )
     results.append(("TC-09", "Match Day Buffer Cascades", tc09_pass, msg09))
     print(f"  Result: {Colors.GREEN}PASS{Colors.RESET} - {msg09}\n")
 
@@ -210,15 +268,23 @@ def run_tests() -> bool:
         end_time="18:30",
         title="Nike Post-Match Brand Interview",
     )
-    tc10_pass = res10.get("success") is False and res10.get("error_code") == "GAME_DAY_PR_PROHIBITED"
-    msg10 = f"PR rejected on match day: {res10.get('message')}" if tc10_pass else "Match day PR blackout failed"
+    tc10_pass = (
+        res10.get("success") is False and res10.get("error_code") == "GAME_DAY_PR_PROHIBITED"
+    )
+    msg10 = (
+        f"PR rejected on match day: {res10.get('message')}"
+        if tc10_pass
+        else "Match day PR blackout failed"
+    )
     results.append(("TC-10", "Beita PR Blackout on Match Day", tc10_pass, msg10))
     print(f"  Result: {Colors.GREEN}PASS{Colors.RESET} - {msg10}\n")
 
     # -------------------------------------------------------------------------
     # TC-11: Priority Collision Override & Assisted Rescheduling
     # -------------------------------------------------------------------------
-    print(f"{Colors.BOLD}[TC-11] Priority Collision Override (Gor overrides Beita PR){Colors.RESET}")
+    print(
+        f"{Colors.BOLD}[TC-11] Priority Collision Override (Gor overrides Beita PR){Colors.RESET}"
+    )
     # Beita has PR event at 16:30 - 17:30 on 09/02 (from TC-06)
     # Gor requests late session 16:30 - 17:30
     res11_prop = calendar_store.propose_training(
@@ -250,7 +316,11 @@ def run_tests() -> bool:
 
     tc11_pass = override_detected and override_committed and bumped_found
     sugg_slot = res11_app.get("reschedule_suggestion", {}).get("slot", "17:30 - 18:30")
-    msg11 = f"Override approved. Beita's event marked BUMPED. Assisted rescheduling slot offered: {sugg_slot}." if tc11_pass else "Override failed"
+    msg11 = (
+        f"Override approved. Beita's event marked BUMPED. Assisted rescheduling slot offered: {sugg_slot}."
+        if tc11_pass
+        else "Override failed"
+    )
     results.append(("TC-11", "Priority Override & Assisted Rescheduling", tc11_pass, msg11))
     print(f"  Result: {Colors.GREEN}PASS{Colors.RESET} - {msg11}\n")
 
@@ -260,13 +330,15 @@ def run_tests() -> bool:
     total = len(results)
     passed = sum(1 for _, _, p, _ in results if p)
 
-    print(f"\n{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.CYAN}VERIFICATION SCORECARD: {passed}/{total} TESTS PASSED{Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.RESET}")
+    print(f"\n{Colors.BOLD}{Colors.CYAN}{'=' * 80}{Colors.RESET}")
+    print(
+        f"{Colors.BOLD}{Colors.CYAN}VERIFICATION SCORECARD: {passed}/{total} TESTS PASSED{Colors.RESET}"
+    )
+    print(f"{Colors.BOLD}{Colors.CYAN}{'=' * 80}{Colors.RESET}")
     for tc_id, name, p, desc in results:
         status_str = f"{Colors.GREEN}PASS{Colors.RESET}" if p else f"{Colors.RED}FAIL{Colors.RESET}"
         print(f"{tc_id:<7} | {name:<42} | {status_str} | {desc}")
-    print(f"{Colors.BOLD}{Colors.CYAN}{'='*80}{Colors.RESET}\n")
+    print(f"{Colors.BOLD}{Colors.CYAN}{'=' * 80}{Colors.RESET}\n")
 
     return passed == total
 

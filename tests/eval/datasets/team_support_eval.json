@@ -1,0 +1,445 @@
+{
+  "dataset_name": "small_team_support_agent_behavioral_eval",
+  "description": "Evaluation dataset for multi-persona WTA tennis support agent testing tool usage, persona voice, and domain rule compliance across Gina, Gor, Sai, Ma, and Beita.",
+  "eval_cases": [
+    {
+      "eval_case_id": "eval_tc01_quiet_hours",
+      "persona": "Gina",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "[As Gina] What is my schedule for tomorrow (2026-09-02)?"
+          }
+        ]
+      },
+      "expected_tool": "get_daily_schedule",
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "Daily schedule with breakfast at 07:00, lunch at 12:00, and dinner at 18:00. Explicitly informs Gina that the 06:00 AM breakfast alert is silenced due to Sleep Quiet Hours (22:00 - 07:30) to protect athletic recovery, with daytime alerts active starting after 07:30."
+            }
+          ]
+        }
+      },
+      "rubric_groups": {
+        "persona_and_rules": {
+          "rubrics": [
+            {
+              "rubric_id": "sleep_quiet_hours_mentioned",
+              "content": {
+                "property": {
+                  "description": "Agent must explain that early morning alerts (e.g. 06:00 AM for 07:00 AM breakfast) are silenced to protect athlete rest between 22:00 and 07:30."
+                }
+              }
+            },
+            {
+              "rubric_id": "view_only_guardrail",
+              "content": {
+                "property": {
+                  "description": "Agent should acknowledge player persona Gina in an empathetic, supportive tone."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eval_case_id": "eval_tc02_training_cap",
+      "persona": "Gor",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "[As Gor] Schedule a 2.5 hour serve training session on 2026-09-02 at 14:00"
+          }
+        ]
+      },
+      "expected_tool": "propose_court_training",
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "Training request is rejected because 150 minutes exceeds the 120-minute (2-hour) maximum single-session duration limit."
+            }
+          ]
+        }
+      },
+      "rubric_groups": {
+        "persona_and_rules": {
+          "rubrics": [
+            {
+              "rubric_id": "duration_cap_enforced",
+              "content": {
+                "property": {
+                  "description": "Agent must reject the session citing the 120-minute (2-hour) maximum limit."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eval_case_id": "eval_tc03_training_coupling",
+      "persona": "Gor",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "[As Gor] Schedule 90-min training on 2026-09-02 at 14:30"
+          }
+        ]
+      },
+      "expected_tool": "propose_court_training",
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "Proposes training from 14:30 to 16:00 and notes that Ma's pre-training workout is automatically coupled from 13:30 to 14:30. Presents options [Approve], [Reject], or [Change Time]."
+            }
+          ]
+        }
+      },
+      "rubric_groups": {
+        "persona_and_rules": {
+          "rubrics": [
+            {
+              "rubric_id": "workout_auto_coupling",
+              "content": {
+                "property": {
+                  "description": "Agent must inform Gor that Ma's workout is auto-scheduled for 13:30-14:30 (1h prior to training)."
+                }
+              }
+            },
+            {
+              "rubric_id": "hitl_options_presented",
+              "content": {
+                "property": {
+                  "description": "Agent must present clear confirmation options (such as [Approve] / [Reject])."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eval_case_id": "eval_tc04_workout_syllabus",
+      "persona": "Ma",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "[As Ma] Workout syllabus for 2026-09-02: Core stability and hip mobility with resistance bands"
+          }
+        ]
+      },
+      "expected_tool": "set_workout_syllabus",
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "Confirms attachment of the core stability and hip mobility syllabus to the auto-booked 13:30 workout on 2026-09-02."
+            }
+          ]
+        }
+      },
+      "rubric_groups": {
+        "persona_and_rules": {
+          "rubrics": [
+            {
+              "rubric_id": "syllabus_updated",
+              "content": {
+                "property": {
+                  "description": "Agent confirms the syllabus has been recorded for the workout session."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eval_case_id": "eval_tc05_meal_order",
+      "persona": "Ma",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "[As Ma] Meal plan for 2026-09-02: Breakfast oatmeal with berries, lunch grilled chicken quinoa, dinner salmon salad"
+          }
+        ]
+      },
+      "expected_tool": "order_daily_meals",
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "Confirms daily meal plan and returns a generated food order tracking ID."
+            }
+          ]
+        }
+      },
+      "rubric_groups": {
+        "persona_and_rules": {
+          "rubrics": [
+            {
+              "rubric_id": "food_order_generated",
+              "content": {
+                "property": {
+                  "description": "Agent acknowledges the three meals and reports a food delivery order ID."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eval_case_id": "eval_tc06_pr_training_conflict",
+      "persona": "Beita",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "[As Beita] Book sponsor meet-and-greet on 2026-09-02 at 11:00 AM"
+          }
+        ]
+      },
+      "expected_tool": "book_pr_activity",
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "Rejects the 11:00 AM booking because PR activities cannot be scheduled before court training on the same day. Recommends an open afternoon slot after training (e.g. 16:30 - 17:30)."
+            }
+          ]
+        }
+      },
+      "rubric_groups": {
+        "persona_and_rules": {
+          "rubrics": [
+            {
+              "rubric_id": "pr_before_training_blocked",
+              "content": {
+                "property": {
+                  "description": "Agent must reject the morning slot because PR cannot precede court training."
+                }
+              }
+            },
+            {
+              "rubric_id": "reschedule_suggestion_offered",
+              "content": {
+                "property": {
+                  "description": "Agent must offer an alternative afternoon timeslot (e.g. 16:30 or later)."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eval_case_id": "eval_tc07_fatigue_guardrail",
+      "persona": "Gor",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "[As Gor] Schedule court training on 2026-09-03 at 10:00 AM for 90 minutes"
+          }
+        ]
+      },
+      "expected_tool": "propose_court_training",
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "Rejects the training proposal due to the 4-Day Fatigue Guardrail: Gina has trained on 08/30, 08/31, 09/01, and 09/02 consecutively. Recommends mandatory physical rest before the 09/04 match."
+            }
+          ]
+        }
+      },
+      "rubric_groups": {
+        "persona_and_rules": {
+          "rubrics": [
+            {
+              "rubric_id": "fatigue_guardrail_enforced",
+              "content": {
+                "property": {
+                  "description": "Agent must reject training on 09/03 citing the 4 consecutive active days and need for recovery."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eval_case_id": "eval_tc08_tactical_scouting",
+      "persona": "Sai",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "[As Sai] Book opponent tactical analysis on 2026-09-03 from 10:30 to 11:30 for Sofia Kenin match"
+          }
+        ]
+      },
+      "expected_tool": "book_opponent_tactical_analysis",
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "Confirms booking of the 60-minute calendar-blocking opponent scouting session on 09/03 (pre-match day) and attaches tactical game-plan notes."
+            }
+          ]
+        }
+      },
+      "rubric_groups": {
+        "persona_and_rules": {
+          "rubrics": [
+            {
+              "rubric_id": "scouting_booked_on_pre_match_day",
+              "content": {
+                "property": {
+                  "description": "Agent confirms scouting session booking on the day prior to the tournament match."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eval_case_id": "eval_tc09_match_cascades",
+      "persona": "Gina",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "[As Gina] What is my schedule for match day (2026-09-04)?"
+          }
+        ]
+      },
+      "expected_tool": "get_daily_schedule",
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "Presents match day schedule including Match vs Kenin (14:00-16:00), Pre-game warm-up (12:30-13:30), Post-game press conference (16:00-16:15), Post-game physical therapy recovery (16:15-17:15), shifted lunch (11:30-12:15) and dinner (18:00-19:00)."
+            }
+          ]
+        }
+      },
+      "rubric_groups": {
+        "persona_and_rules": {
+          "rubrics": [
+            {
+              "rubric_id": "match_buffers_present",
+              "content": {
+                "property": {
+                  "description": "Agent lists Warm-up, Media, and Physical Therapy recovery alongside the official match."
+                }
+              }
+            },
+            {
+              "rubric_id": "meal_shifts_present",
+              "content": {
+                "property": {
+                  "description": "Agent reflects the shifted meal buffer protecting match digestion (1h pre/post-match)."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eval_case_id": "eval_tc10_match_pr_blackout",
+      "persona": "Beita",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "[As Beita] Book brand interview on 2026-09-04 at 17:00"
+          }
+        ]
+      },
+      "expected_tool": "book_pr_activity",
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "Rejects PR booking on match day (2026-09-04) because social and media activities are strictly prohibited to protect match focus."
+            }
+          ]
+        }
+      },
+      "rubric_groups": {
+        "persona_and_rules": {
+          "rubrics": [
+            {
+              "rubric_id": "match_day_pr_blackout_enforced",
+              "content": {
+                "property": {
+                  "description": "Agent must reject the booking citing match day blackout policy."
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "eval_case_id": "eval_tc11_priority_override",
+      "persona": "Gor",
+      "prompt": {
+        "role": "user",
+        "parts": [
+          {
+            "text": "[As Gor] Schedule court training on 2026-09-02 at 16:30 for 60 minutes"
+          }
+        ]
+      },
+      "expected_tool": "propose_court_training",
+      "reference": {
+        "response": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "Detects conflict with Beita's PR event (16:30-17:30). Informs Gor that Training (Priority 3) has higher priority than PR/Social (Priority 5) and offers the [Approve Override] option."
+            }
+          ]
+        }
+      },
+      "rubric_groups": {
+        "persona_and_rules": {
+          "rubrics": [
+            {
+              "rubric_id": "override_option_offered",
+              "content": {
+                "property": {
+                  "description": "Agent detects collision with lower-priority event and provides override capability."
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

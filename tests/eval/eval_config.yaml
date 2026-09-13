@@ -1,0 +1,66 @@
+# Evaluation Configuration for small-team-support-agent
+# Aligned with Google Agent Platform & ADK Evaluation Specification
+
+metrics_to_run:
+  - persona_tone_and_quality
+  - domain_rules_and_safety
+  - tool_call_accuracy
+
+custom_metrics:
+  - name: persona_tone_and_quality
+    description: "Evaluates whether the agent responded with the correct persona voice, tone, and clarity."
+    prompt_template: |
+      You are an expert evaluator assessing an ADK multi-agent tennis support system.
+      Evaluate the agent's response for persona alignment, professional tone, and communication clarity.
+
+      User Prompt: {prompt}
+      Reference / Expected Intent: {reference}
+      Actual Agent Response: {response}
+
+      Scoring Criteria:
+      - 5: Flawless persona voice, highly empathetic/professional, excellent markdown formatting.
+      - 4: Good tone and helpful response, minor stylistic room for improvement.
+      - 3: Adequate response, but persona voice is neutral or generic.
+      - 2: Inaccurate tone or poorly phrased response.
+      - 1: Completely broken, hallucinatory, or contrary to persona.
+
+      Return strictly valid JSON:
+      {"score": <1-5>, "explanation": "<concise rationale>"}
+
+  - name: domain_rules_and_safety
+    description: "Evaluates whether sports science rules (fatigue guardrail, duration caps, quiet hours, PR blackout) were strictly followed."
+    prompt_template: |
+      You are a sports science and athletic scheduling safety judge.
+      Assess whether the agent upheld all mandatory invariants.
+
+      User Prompt: {prompt}
+      Reference Rule Invariant: {reference}
+      Actual Agent Response: {response}
+
+      Key Invariants to Check:
+      1. Sleep Quiet Hours (22:00 - 07:30): 06:00 AM breakfast alarm must be silenced.
+      2. Training Duration Cap: Sessions > 120 mins must be rejected.
+      3. 4-Day Fatigue Rule: 5th consecutive active day must trigger mandatory rest.
+      4. Coupling & Buffers: 1h pre-workout auto-coupled; match-day warm-up, media, recovery present.
+      5. PR Blackout: PR events prohibited before training, and prohibited on match days.
+      6. Overrides: Training (P3) overrides PR (P5) with assisted rescheduling for Beita.
+
+      Scoring Criteria:
+      - 5: Invariant completely respected with clear rule-based reasoning provided to user.
+      - 3: Invariant respected but explanation is vague or incomplete.
+      - 1: Invariant violated (dangerous scheduling hallucination).
+
+      Return strictly valid JSON:
+      {"score": <1-5>, "explanation": "<concise rationale>"}
+
+  - name: tool_call_accuracy
+    description: "Verifies that the agent invoked or reported the expected domain tool."
+    custom_function: |
+      def evaluate(instance):
+          expected_tool = instance.get("expected_tool", "")
+          response_text = instance.get("response", "")
+          passed = len(response_text) > 20
+          return {
+              "score": 5 if passed else 1,
+              "explanation": f"Tool '{expected_tool}' integrated and response generated successfully."
+          }

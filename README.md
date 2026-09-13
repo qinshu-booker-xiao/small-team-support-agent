@@ -22,9 +22,12 @@ small-team-support-agent/
 │   ├── tools.py           # ADK 2.0 FunctionTools wrapping the engine
 │   ├── agent.py           # Strategic Model Routed Multi-Agent System (Compaction enabled)
 │   ├── sessions.py        # FirestoreSessionService & TeamMemoryBank persistence
+│   ├── observability.py   # Structured JSON logging, OpenTelemetry tracing & PII redactor
 │   ├── fast_api_app.py    # FastAPI server exposing ADK & A2A protocol routes
 │   └── app_utils/         # Shared service registry & dynamic A2A endpoint mounter
 ├── tests/
+│   ├── unit/
+│   │   └── test_observability.py # Unit tests for tracing, logging & PII redaction
 │   └── eval/
 │       ├── datasets/
 │       │   └── team_support_eval.json # Canonical evaluation dataset for all personas
@@ -121,6 +124,41 @@ agents-cli deploy \
 - Plaintext key file fallbacks (e.g. `~/gemini_key.txt`) are eliminated.
 - Local execution relies on `.env` (strictly gitignored).
 - Cloud Run / GCP execution uses Application Default Credentials (ADC) or GCP Secret Manager (`--secrets GEMINI_API_KEY=my-gemini-key`).
+
+---
+
+## Enterprise Observability, Distributed Tracing & PII Redaction
+
+The agent integrates a production-grade telemetry pipeline (`app/observability.py`):
+
+### 1. Structured JSON Logging (Google Cloud Logging Standard)
+- Logs are emitted as structured JSON lines (NDJSON) to `stdout`/`stderr`.
+- Conforms to Google Cloud Logging schemas with automatic trace context correlation (`logging.googleapis.com/trace`, `logging.googleapis.com/spanId`).
+- Captures `intent`, `outcome`, `target_persona`, `duration_ms`, `session_id`, `user_id`, and contextual metadata.
+
+### 2. Distributed Tracing (OpenTelemetry)
+- Uses `opentelemetry.trace` to instrument:
+  - Top-level agent turns (`agent_turn`)
+  - Tool invocations (`tool.propose_court_training`, `tool.book_pr_activity`, etc.)
+  - HTTP server requests (`structured_http_logging_middleware`)
+- Automatically records execution duration, span statuses (`StatusCode.OK`, `StatusCode.ERROR`), and exception traces.
+
+### 3. Intent & Outcome Taxonomy
+- **`AgentIntent`**: Categorizes requests into `QUERY_SCHEDULE`, `PROPOSE_TRAINING`, `APPROVE_PROPOSAL`, `REJECT_PROPOSAL`, `ATTACH_WORKOUT_SYLLABUS`, `ORDER_MEALS`, `BOOK_PR_ACTIVITY`, `SCOUT_OPPONENT`, `QUERY_TEAM_MEMORY`, `OVERRIDE_PRIORITY`.
+- **`ExecutionOutcome`**: Records domain invariants and guardrail status codes (`SUCCESS`, `FATIGUE_GUARDRAIL_BLOCKED`, `DURATION_CAP_EXCEEDED`, `PR_BEFORE_TRAINING_BLOCKED`, `GAME_DAY_PR_PROHIBITED`, `CONFLICT_DETECTED`, `OVERRIDE_APPROVED`, `ERROR`).
+
+### 4. PII Redaction Engine (`PIIRedactor`)
+- Automatically strips sensitive credentials and personal data before writing logs or trace attributes:
+  - GitHub PATs (`github_pat_*`), Classic tokens (`ghp_*`), Google API keys (`AIza*`), Bearer headers.
+  - Email addresses (`[EMAIL_REDACTED]`).
+  - International & domestic phone numbers (`[PHONE_REDACTED]`).
+  - Payment card numbers (`[PAYMENT_REDACTED]`) & SSNs (`[SSN_REDACTED]`).
+  - Sensitive dictionary keys (`password`, `token`, `secret`, `api_key`, `credentials`) are scrubbed recursively.
+
+### 5. Run Observability Test Suite
+```bash
+pytest tests/unit/test_observability.py -v
+```
 
 ---
 

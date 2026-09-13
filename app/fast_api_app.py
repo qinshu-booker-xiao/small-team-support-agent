@@ -14,22 +14,41 @@
 
 import contextlib
 import os
+import time
+import uuid
 from collections.abc import AsyncIterator
+from typing import Any, Literal
 
 from a2a.server.tasks import InMemoryTaskStore
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from google.adk.cli.fast_api import get_fast_api_app
 from google.adk.runners import Runner
+from pydantic import BaseModel, Field
 
 from app.app_utils import services
 from app.app_utils.a2a import attach_a2a_routes
+from app.observability import (
+    PIIRedactor,
+    structured_logger,
+)
 
 load_dotenv()
 allow_origins = os.getenv("ALLOW_ORIGINS", "").split(",") if os.getenv("ALLOW_ORIGINS") else None
 otel_to_cloud = os.getenv("OTEL_TO_CLOUD", "false").lower() in ("true", "1")
 
 AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+class UserFeedback(BaseModel):
+    """Represents user rating and qualitative feedback for athletic support conversations."""
+
+    score: int | float = Field(..., description="Rating score (e.g. 1 to 5)")
+    text: str | None = Field(default="", description="User feedback commentary")
+    log_type: Literal["feedback"] = "feedback"
+    service_name: str = "small-team-support-agent"
+    user_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
 
 @contextlib.asynccontextmanager
@@ -52,6 +71,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         task_store=InMemoryTaskStore(),
         rpc_path=f"/a2a/{adk_app.name}",
     )
+    structured_logger.info(
+        "FastAPI service initialized with ADK routes and A2A interfaces",
+        component="fast_api_server",
+        metadata={"otel_to_cloud": otel_to_cloud, "app_name": adk_app.name},
+    )
     yield
 
 
@@ -65,7 +89,60 @@ app: FastAPI = get_fast_api_app(
     lifespan=lifespan,
 )
 app.title = "small-team-support-agent"
-app.description = "API for interacting with the WTA Tennis Support Agent"
+app.description = "Enterprise API for WTA Tennis Player & Multi-Persona Support Team"
+
+
+@app.middleware("http")
+async def structured_http_logging_middleware(request: Request, call_next):
+    """Structured HTTP middleware recording latency and status codes."""
+    t0 = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - t0) * 1000
+
+    # Only log non-internal assets to keep logs high-signal
+    if not request.url.path.startswith("/static"):
+        structured_logger.info(
+            f"{request.method} {request.url.path} -> {response.status_code}",
+            component="http_server",
+            duration_ms=duration_ms,
+            metadata={
+                "http.method": request.method,
+                "http.path": request.url.path,
+                "http.status_code": response.status_code,
+            },
+        )
+    return response
+
+
+@app.post("/feedback")
+def submit_feedback(feedback: UserFeedback) -> dict[str, str]:
+    """Submit qualitative conversation feedback with automatic PII scrubbing."""
+    sanitized_text = PIIRedactor.redact_text(feedback.text or "")
+    structured_logger.info(
+        f"User feedback received: score={feedback.score}",
+        component="feedback",
+        metadata={
+            "score": feedback.score,
+            "comment": sanitized_text,
+            "user_id": feedback.user_id,
+            "session_id": feedback.session_id,
+            "log_type": feedback.log_type,
+        },
+    )
+    return {"status": "success", "message": "Feedback recorded successfully."}
+
+
+@app.get("/healthz")
+def health_check() -> dict[str, Any]:
+    """Liveness probe for Cloud Run container orchestration."""
+    return {
+        "status": "HEALTHY",
+        "service": "small-team-support-agent",
+        "version": os.getenv("AGENT_VERSION", "0.1.0"),
+        "tracing_enabled": True,
+        "structured_logging": True,
+        "pii_redaction": True,
+    }
 
 
 # Main execution

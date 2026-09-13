@@ -12,6 +12,7 @@ Defines the Coordinator Agent and Specialist Sub-Agents:
 import asyncio
 import os
 import re
+import time
 
 from dotenv import load_dotenv
 from google.adk.agents import Agent
@@ -20,6 +21,13 @@ from google.adk.apps.app import EventsCompactionConfig
 from google.adk.runners import Runner
 from google.genai import types
 
+from app.observability import (
+    ExecutionOutcome,
+    PIIRedactor,
+    classify_intent,
+    structured_logger,
+    trace_span,
+)
 from app.sessions import get_session_service
 from app.tools import (
     approve_pending_proposal,
@@ -277,6 +285,9 @@ class SupportAgentRunner:
         self, user_input: str, persona: str | None = None, user_id: str = "team_user"
     ) -> str:
         """Execute a conversational turn dispatched to the appropriate agent."""
+        t0 = time.perf_counter()
+        intent = classify_intent(user_input)
+
         # 1. Check for explicit persona tag in message
         tagged_persona, clean_input = extract_persona(user_input)
         target_persona = (persona or tagged_persona or "coordinator").lower()
@@ -291,25 +302,67 @@ class SupportAgentRunner:
             self.sessions[session_key] = session.id
         session_id = self.sessions[session_key]
 
-        # 3. Dispatch message to ADK runner
-        content = types.Content(
-            role="user", parts=[types.Part.from_text(text=clean_input or user_input)]
-        )
-
-        response_parts = []
-        async for event in active_runner.run_async(
-            session_id=session_id, user_id=user_id, new_message=content
+        with trace_span(
+            "agent_turn",
+            attributes={
+                "agent.persona": target_persona,
+                "agent.intent": str(intent),
+                "session.id": session_id,
+                "user.id": user_id,
+                "user.input_redacted": PIIRedactor.redact_text(user_input),
+            },
+            component="agent_runtime",
         ):
-            if hasattr(event, "content") and event.content:
-                for part in event.content.parts:
-                    if hasattr(part, "text") and part.text:
-                        response_parts.append(part.text)
+            # 3. Dispatch message to ADK runner
+            content = types.Content(
+                role="user", parts=[types.Part.from_text(text=clean_input or user_input)]
+            )
 
-        if response_parts:
-            return "\n".join(response_parts).strip()
+            response_parts = []
+            outcome = ExecutionOutcome.SUCCESS
+            try:
+                async for event in active_runner.run_async(
+                    session_id=session_id, user_id=user_id, new_message=content
+                ):
+                    if hasattr(event, "content") and event.content:
+                        for part in event.content.parts:
+                            if hasattr(part, "text") and part.text:
+                                response_parts.append(part.text)
+            except Exception as e:
+                outcome = ExecutionOutcome.ERROR
+                duration_ms = (time.perf_counter() - t0) * 1000
+                structured_logger.error(
+                    f"Agent turn failed for persona '{target_persona}': {e}",
+                    intent=intent,
+                    outcome=outcome,
+                    target_persona=target_persona,
+                    duration_ms=duration_ms,
+                    session_id=session_id,
+                    user_id=user_id,
+                    metadata={"error": str(e)},
+                    component="agent_runtime",
+                )
+                raise
 
-        # Fallback if model returned structured tool call only
-        return "Action processed successfully."
+            duration_ms = (time.perf_counter() - t0) * 1000
+            result = (
+                "\n".join(response_parts).strip()
+                if response_parts
+                else "Action processed successfully."
+            )
+
+            structured_logger.info(
+                f"Agent turn completed successfully for persona '{target_persona}'",
+                intent=intent,
+                outcome=outcome,
+                target_persona=target_persona,
+                duration_ms=duration_ms,
+                session_id=session_id,
+                user_id=user_id,
+                metadata={"response_length": len(result)},
+                component="agent_runtime",
+            )
+            return result
 
 
 # Global runner instance

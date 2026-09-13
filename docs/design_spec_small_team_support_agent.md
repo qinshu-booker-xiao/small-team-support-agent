@@ -29,8 +29,8 @@ flowchart TD
     end
 
     subgraph ThinWrapper["Thin ADK 2.0 Agent Wrapper (agent.py, tools.py)"]
-        Router["Coordinator Agent (gemini-2.5-flash)\n• Fast Persona & Intent Dispatch"]
-        Specialists["Model-Routed Sub-Agents\n• GorAgent (gemini-3.7-flash)\n• SaiAgent (gemini-2.5-pro)\n• MaAgent (gemini-2.5-flash)\n• BeitaAgent (gemini-2.5-flash)\n• GinaAgent (gemini-2.5-flash)"]
+        Router["Coordinator Agent (gemini-3.6-flash)\n• Fast Persona & Intent Dispatch"]
+        Specialists["Model-Routed Sub-Agents\n• GorAgent (gemini-3.7-flash)\n• SaiAgent (gemini-3.1-pro-preview)\n• MaAgent (gemini-3.6-flash)\n• BeitaAgent (gemini-3.6-flash)\n• GinaAgent (gemini-3.6-flash)"]
         HITLDialog["Conversational HITL Dialog Handler\n• [Approve] / [Reject] / [Change Time]"]
         Router --> Specialists
         Specialists <--> HITLDialog
@@ -78,12 +78,12 @@ ADK 2.0 assigns specialized Gemini models to sub-agents based on latency and rea
 
 | Agent Component | Model | Rationale & Task Characteristics | Cost / Latency Tier |
 | :--- | :--- | :--- | :--- |
-| **Coordinator Agent**<br>*(Triage & Router)* | **`gemini-2.5-flash`** | Needs sub-second latency (<300ms) to inspect persona tags, route user intents, and dispatch to sub-agents without complex reasoning. | Lowest Cost / Ultra-Fast |
+| **Coordinator Agent**<br>*(Triage & Router)* | **`gemini-3.6-flash`** | Needs sub-second latency (<300ms) to inspect persona tags, route user intents, and dispatch to sub-agents without complex reasoning. | Lowest Cost / Ultra-Fast |
 | **GorAgent**<br>*(Training & Overrides)* | **`gemini-3.7-flash`** | Requires multi-constraint reasoning (4-day fatigue calculation, training duration caps, priority conflict resolution, and override negotiation). | High Reasoning / Fast |
-| **SaiAgent**<br>*(Tactics & Scouting)* | **`gemini-2.5-pro`** | Handles unstructured tactical scouting synthesis, opponent tendencies (e.g. Kenin's second serve patterns), and multi-point game strategy formulation. | Deep Reasoning / Heavy Context |
-| **MaAgent**<br>*(PT & Nutrition)* | **`gemini-2.5-flash`** | Deterministic extraction of structured Pydantic schemas (meal plans, dietary macros, workout syllabus parsing). Fast and accurate. | Low Cost / Fast |
-| **BeitaAgent**<br>*(PR & Assisted Rescheduling)* | **`gemini-2.5-flash`** | Schedule slot matching, daytime compliance checks, and prompt-driven assisted rescheduling templates. | Low Cost / Fast |
-| **GinaAgent**<br>*(Briefing & Alerts)* | **`gemini-2.5-flash`** | Formats structured calendar events into human-readable tables, agendas, and enforces sleep quiet hour rules. | Low Cost / Fast |
+| **SaiAgent**<br>*(Tactics & Scouting)* | **`gemini-3.1-pro-preview`** | Handles unstructured tactical scouting synthesis, opponent tendencies (e.g. Kenin's second serve patterns), and multi-point game strategy formulation. | Deep Reasoning / Heavy Context |
+| **MaAgent**<br>*(PT & Nutrition)* | **`gemini-3.6-flash`** | Deterministic extraction of structured Pydantic schemas (meal plans, dietary macros, workout syllabus parsing). Fast and accurate. | Low Cost / Fast |
+| **BeitaAgent**<br>*(PR & Assisted Rescheduling)* | **`gemini-3.6-flash`** | Schedule slot matching, daytime compliance checks, and prompt-driven assisted rescheduling templates. | Low Cost / Fast |
+| **GinaAgent**<br>*(Briefing & Alerts)* | **`gemini-3.6-flash`** | Formats structured calendar events into human-readable tables, agendas, and enforces sleep quiet hour rules. | Low Cost / Fast |
 
 ---
 
@@ -400,13 +400,13 @@ class MealPlan(BaseModel):
 
 ---
 
-## 11. Production GCP Deployment Target (Post-Demo Roadmap)
+## 11. Production GCP Deployment & Cloud Architecture (Implemented MVP)
 
-For production deployment following the demo:
-1. **Containerization & Deployment**: Deployed to **Google Cloud Run** or **Agent Runtime** via `agents-cli deploy`.
-2. **Database Persistence**: Transition from in-memory `CalendarStore` to **Cloud Firestore (Native Mode)** (`/tournaments`, `/teams/gina_team/calendar`, `/teams/gina_team/meals`).
-3. **Timed Push Alerts**: Cloud Tasks / Cloud Scheduler dispatches webhook events for Gina's 1-hour pre-activity alerts.
-4. **Observability**: Cloud Trace (distributed OTel traces) and BigQuery Agent Analytics enabled for auditability.
+The system is fully containerized and architected for enterprise deployment on Google Cloud:
+1. **Containerization & Deployment**: Dockerized via Python 3.12-slim and deployable to **Google Cloud Run** or **Agent Runtime** using `agents-cli deploy`.
+2. **Database & Memory Persistence**: Real-time conversational state persisted to **Google Cloud Firestore (Native Mode)** (`/agent_sessions`, `/team_memories`) with graceful local in-memory fallback.
+3. **Serving Surfaces**: Dual-stack serving providing native ADK Web SSE routes alongside Agent2Agent (A2A) JSON-RPC and agent card endpoints.
+4. **Enterprise Observability**: Distributed tracing via OpenTelemetry, Cloud Logging-compliant structured JSON logging, domain intent & outcome tracking, and automated PII scrubbing.
 
 ---
 
@@ -461,5 +461,13 @@ To avoid token bloat during multi-turn tournament scenarios, all persona sub-age
 
 ### 13.5 Code Quality & Linting Standards
 The codebase adheres strictly to Python 3.12 standards and is validated using **Ruff** for linting and formatting (`ruff check .`, `ruff format --check .`).
+
+### 13.6 Enterprise Observability, Distributed Tracing & PII Redaction
+- **Structured JSON Logging (`app/observability.py`)**: Replaced standard Python string logging with NDJSON logging strictly adhering to Google Cloud Logging schemas with automatic trace context correlation (`logging.googleapis.com/trace`, `logging.googleapis.com/spanId`).
+- **Distributed Tracing (OpenTelemetry)**: Full span instrumentation across agent turns (`agent_turn`), tool executions (`tool.*`), and HTTP endpoints (`structured_http_logging_middleware`) with latency analysis and error code tagging.
+- **Intent & Outcome Taxonomy**: Explicit domain intent categorization (`AgentIntent`) and execution guardrail outcome tracking (`ExecutionOutcome`) across all operations.
+- **Automated PII Redaction (`PIIRedactor`)**: Automated pattern and structural scrubbing of GitHub tokens, Google API keys, Bearer auth headers, emails, phone numbers, payment cards, SSNs, and sensitive dictionary keys prior to log emission.
+- **Unit Verification (`tests/unit/test_observability.py`)**: Automated test suite verifying PII scrubbing, intent classification, and tracing span lifecycle.
+
 
 

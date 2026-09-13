@@ -443,7 +443,7 @@ Adheres to the canonical `EvaluationDataset` schema (`eval_cases` with `prompt`,
 
 ### 13.1 Cloud Firestore Native Persistence & Team Memory Bank
 - **Session State**: Conversational turns and state transitions are optionally persisted to Cloud Firestore Native Database (`(default)` in `us-central1`) via `FirestoreSessionService`.
-- **Memory Bank**: Cross-session long-term athlete facts (e.g. dietary preferences, recovery sleep rules, coaching tactics, sponsor photo shoot hours) are indexed in the `team_memories` Firestore collection with dynamic semantic fallback.
+- **Memory Bank**: Cross-session long-term athlete facts (e.g. dietary preferences, recovery sleep rules, coaching tactics, sponsor photo shoot hours) are indexed in the `team_memories` Firestore collection with dynamic semantic search.
 - **In-Memory Fallback**: Seamless fallback to local in-memory session management when `USE_FIRESTORE=false` or when running outside GCP.
 
 ### 13.2 Conversation History Compaction
@@ -468,6 +468,13 @@ The codebase adheres strictly to Python 3.12 standards and is validated using **
 - **Intent & Outcome Taxonomy**: Explicit domain intent categorization (`AgentIntent`) and execution guardrail outcome tracking (`ExecutionOutcome`) across all operations.
 - **Automated PII Redaction (`PIIRedactor`)**: Automated pattern and structural scrubbing of GitHub tokens, Google API keys, Bearer auth headers, emails, phone numbers, payment cards, SSNs, and sensitive dictionary keys prior to log emission.
 - **Unit Verification (`tests/unit/test_observability.py`)**: Automated test suite verifying PII scrubbing, intent classification, and tracing span lifecycle.
+
+### 13.7 Asynchronous Background Memory Generation & Consolidation
+- **Non-Blocking Memory Extraction (`schedule_memory_generation`)**: Evaluates completed turns in background tasks (`asyncio.create_task`) without adding latency to user requests. Categorizes insights across athlete preferences, sleep rules, coaching invariants, opponent scouting directives, and sponsor terms.
+- **Background Memory Consolidation (`consolidate_memories_async`)**: Periodic (every 300s) and threshold-triggered background worker deduplicating near-duplicate facts using normalized token fingerprinting and Jaccard similarity, resolving conflicting facts, and compacting knowledge state.
+- **Asynchronous Storage Synchronization**: Non-blocking batch writes to Cloud Firestore (`team_memories`) and concurrency-safe local state (`asyncio.Lock`).
+- **REST Telemetry & Control**: Endpoints `POST /memory/consolidate` and `GET /memory/stats` for real-time observability and on-demand trigger.
+- **Unit Verification (`tests/unit/test_memory_management.py`)**: Comprehensive automated tests verifying async generation, deduplication pruning, non-blocking task dispatch, and memory bank statistics.
 
 
 

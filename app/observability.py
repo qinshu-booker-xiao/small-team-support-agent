@@ -331,7 +331,7 @@ class StructuredLogger:
         event_name: str,
         intent: AgentIntent | str,
         outcome: ExecutionOutcome | str,
-        actor: str,
+        actor: str = "system",
         details: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
@@ -339,13 +339,14 @@ class StructuredLogger:
         meta = {"event_name": event_name, "actor": actor}
         if details:
             meta.update(details)
+        component = kwargs.pop("component", "audit")
         return self._log(
             "INFO",
             f"Audit event [{event_name}]: actor={actor}, intent={intent}, outcome={outcome}",
             intent=intent,
             outcome=outcome,
             metadata=meta,
-            component="audit",
+            component=component,
             **kwargs,
         )
 

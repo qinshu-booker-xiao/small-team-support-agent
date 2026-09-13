@@ -27,7 +27,8 @@ small-team-support-agent/
 │   └── app_utils/         # Shared service registry & dynamic A2A endpoint mounter
 ├── tests/
 │   ├── unit/
-│   │   └── test_observability.py # Unit tests for tracing, logging & PII redaction
+│   │   ├── test_observability.py     # Unit tests for tracing, logging & PII redaction
+│   │   └── test_memory_management.py  # Unit tests for async memory generation & consolidation
 │   └── eval/
 │       ├── datasets/
 │       │   └── team_support_eval.json # Canonical evaluation dataset for all personas
@@ -155,10 +156,36 @@ The agent integrates a production-grade telemetry pipeline (`app/observability.p
   - Payment card numbers (`[PAYMENT_REDACTED]`) & SSNs (`[SSN_REDACTED]`).
   - Sensitive dictionary keys (`password`, `token`, `secret`, `api_key`, `credentials`) are scrubbed recursively.
 
-### 5. Run Observability Test Suite
+### 5. Run Unit Test Suite
 ```bash
-pytest tests/unit/test_observability.py -v
+pytest tests/unit/ -v
 ```
+
+---
+
+## Asynchronous Memory Generation & Consolidation (`app/sessions.py`)
+
+The multi-persona support agent implements enterprise-grade, non-blocking context & memory management:
+
+### 1. Asynchronous Memory Generation Pipeline
+- Runs in non-blocking background tasks (`asyncio.create_task` / `schedule_memory_generation`) dispatched immediately upon completion of an agent turn.
+- The user-facing turn latency is never blocked by memory analysis.
+- Extracts structured facts across categories:
+  - **`athlete_preferences`**: Dietary requirements, pre-match habits, recovery preferences.
+  - **`sleep_rules`**: Recovery sleep duration, quiet hours, advance alarm rules.
+  - **`coaching_focus`**: Training duration caps, fatigue guardrails, tactical priorities.
+  - **`scouting_guidelines`**: Opponent tendencies, video analysis schedules.
+  - **`business_rules`**: Sponsor terms (Wilson, Nike), media windows, match-day blackouts.
+  - **`medical_nutrition`**: Physical therapy protocols, banded walks, mobility drills.
+
+### 2. Asynchronous Memory Consolidation Pipeline
+- Background consolidation worker (`consolidate_memories_async`) runs periodically (every 300s) or triggers automatically when new memories reach the consolidation threshold.
+- **Deduplication**: Word-token fingerprinting and Jaccard similarity detection prune duplicate and near-duplicate entries.
+- **Conflict Resolution & Compaction**: Merges related facts into coherent memory units and increments version numbers.
+- **Storage Synchronization**: Asynchronously updates Cloud Firestore (`team_memories` collection) or local cache with concurrency lock protection (`asyncio.Lock`).
+- **REST Endpoints**:
+  - `POST /memory/consolidate`: Triggers background consolidation via FastAPI `BackgroundTasks`.
+  - `GET /memory/stats`: Inspects real-time memory metrics, categories, active background tasks, and worker status.
 
 ---
 

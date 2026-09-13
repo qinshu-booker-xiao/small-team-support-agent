@@ -362,6 +362,23 @@ class SupportAgentRunner:
                 metadata={"response_length": len(result)},
                 component="agent_runtime",
             )
+
+            # Trigger asynchronous background memory generation & consolidation (non-blocking)
+            try:
+                from app.sessions import team_memory_bank
+
+                team_memory_bank.schedule_memory_generation(
+                    turn_input=user_input,
+                    turn_output=result,
+                    persona=target_persona,
+                    session_id=session_id,
+                )
+            except Exception as ex:
+                structured_logger.warning(
+                    f"Failed to schedule background memory generation: {ex}",
+                    component="memory_bank",
+                )
+
             return result
 
 

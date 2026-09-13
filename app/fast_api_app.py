@@ -21,7 +21,7 @@ from typing import Any, Literal
 
 from a2a.server.tasks import InMemoryTaskStore
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import BackgroundTasks, FastAPI, Request
 from google.adk.cli.fast_api import get_fast_api_app
 from google.adk.runners import Runner
 from pydantic import BaseModel, Field
@@ -71,12 +71,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         task_store=InMemoryTaskStore(),
         rpc_path=f"/a2a/{adk_app.name}",
     )
+    from app.sessions import team_memory_bank
+
+    team_memory_bank.start_background_worker(interval_seconds=300)
     structured_logger.info(
         "FastAPI service initialized with ADK routes and A2A interfaces",
         component="fast_api_server",
         metadata={"otel_to_cloud": otel_to_cloud, "app_name": adk_app.name},
     )
-    yield
+    try:
+        yield
+    finally:
+        team_memory_bank.stop_background_worker()
 
 
 app: FastAPI = get_fast_api_app(
@@ -143,6 +149,26 @@ def health_check() -> dict[str, Any]:
         "structured_logging": True,
         "pii_redaction": True,
     }
+
+
+@app.post("/memory/consolidate")
+async def trigger_memory_consolidation(background_tasks: BackgroundTasks) -> dict[str, str]:
+    """Trigger an asynchronous background memory consolidation task."""
+    from app.sessions import team_memory_bank
+
+    background_tasks.add_task(team_memory_bank.consolidate_memories_async)
+    return {
+        "status": "scheduled",
+        "message": "Memory consolidation dispatched to background task runner.",
+    }
+
+
+@app.get("/memory/stats")
+def get_memory_stats() -> dict[str, Any]:
+    """Return operational metrics and consolidation state of the long-term memory bank."""
+    from app.sessions import team_memory_bank
+
+    return team_memory_bank.get_stats()
 
 
 # Main execution
